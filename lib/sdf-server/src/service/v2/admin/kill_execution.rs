@@ -1,4 +1,4 @@
-use axum::{extract::Path, response::IntoResponse};
+use axum::extract::Path;
 use dal::func::runner::FuncRunner;
 use si_events::FuncRunId;
 
@@ -9,7 +9,7 @@ pub async fn kill_execution(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(access_builder): AccessBuilder,
     Path(func_run_id): Path<FuncRunId>,
-) -> AdminAPIResult<impl IntoResponse> {
+) -> AdminAPIResult<()> {
     let ctx = builder.build_head(access_builder).await?;
 
     FuncRunner::kill_execution(&ctx, func_run_id).await?;

@@ -278,8 +278,8 @@ local_resource(
 # Locally build and run `sdf`
 sdf_target = "//bin/sdf:sdf"
 
-cmd = "buck2 build @//mode/release {}".format(sdf_target)
-serve_cmd = "buck2 run @//mode/release {} | tee /tmp/si-logs/sdf".format(sdf_target)
+cmd = "buck2 build @//mode/debug {}".format(sdf_target)
+serve_cmd = "buck2 run @//mode/debug {} | tee /tmp/si-logs/sdf".format(sdf_target)
 if rustc_build_mode == 'standard':
     cmd = "buck2 build {}".format(sdf_target)
     serve_cmd = "buck2 run {} | tee /tmp/si-logs/sdf".format(sdf_target)

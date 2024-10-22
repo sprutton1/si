@@ -1,6 +1,7 @@
 use axum::{
+    body::BoxBody,
     extract::{ws::WebSocket, State, WebSocketUpgrade},
-    response::IntoResponse,
+    response::Response,
 };
 use dal::WorkspacePk;
 use nats_multiplexer_client::MultiplexerClient;
@@ -23,7 +24,7 @@ pub async fn workspace_updates(
     WsAuthorization(claim): WsAuthorization,
     State(shutdown_token): State<CancellationToken>,
     State(channel_multiplexer_clients): State<NatsMultiplexerClients>,
-) -> Result<impl IntoResponse, WsError> {
+) -> Result<Response<BoxBody>, WsError> {
     Ok(wsu.on_upgrade(move |socket| {
         run_workspace_updates_proto(
             socket,

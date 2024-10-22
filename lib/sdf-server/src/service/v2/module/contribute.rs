@@ -1,6 +1,5 @@
 use axum::{
     extract::{Host, OriginalUri, Path},
-    response::IntoResponse,
     Json,
 };
 use dal::{module::Module, ChangeSetId, WorkspacePk};
@@ -23,7 +22,7 @@ pub async fn contribute(
     Host(host_name): Host,
     Path((_workspace_pk, change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
     Json(request): Json<frontend_types::ModuleContributeRequest>,
-) -> Result<impl IntoResponse, ModulesAPIError> {
+) -> Result<(), ModulesAPIError> {
     let ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;
@@ -84,5 +83,5 @@ pub async fn contribute(
         }),
     );
 
-    Ok(axum::response::Response::builder().body(axum::body::Empty::new())?)
+    Ok(())
 }

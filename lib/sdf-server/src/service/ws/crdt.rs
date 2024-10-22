@@ -1,11 +1,12 @@
 use std::{collections::hash_map::Entry, collections::HashMap, sync::Arc};
 
 use axum::{
+    body::BoxBody,
     extract::{
         ws::{self, Message},
         Query, State, WebSocketUpgrade,
     },
-    response::IntoResponse,
+    response::Response,
 };
 use dal::{WorkspacePk, WsEventError};
 use futures::{Sink, SinkExt, Stream, StreamExt};
@@ -70,7 +71,7 @@ pub async fn crdt(
     State(shutdown_token): State<CancellationToken>,
     State(broadcast_groups): State<BroadcastGroups>,
     State(nats_multiplexer_clients): State<NatsMultiplexerClients>,
-) -> Result<impl IntoResponse, WsError> {
+) -> Result<Response<BoxBody>, WsError> {
     let workspace_pk = claim.workspace_pk;
     let channel_name = Subject::from(format!("crdt.{workspace_pk}.{id}"));
 
