@@ -743,6 +743,13 @@ impl ChangeSet {
 
         Ok(result)
     }
+
+    /// Whether a change set is considered Open (Change sets pending review are still open)
+    pub fn is_open(&self) -> bool {
+        self.status == ChangeSetStatus::Open
+            || self.status == ChangeSetStatus::NeedsApproval
+            || self.status == ChangeSetStatus::NeedsAbandonApproval
+    }
 }
 
 impl std::fmt::Debug for ChangeSet {

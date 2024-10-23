@@ -305,7 +305,7 @@ mod handlers {
         },
         ContentInfo,
     };
-    use si_data_nats::HeaderMap;
+    use si_data_nats::{HeaderMap, NatsClient, Subject};
     use telemetry::prelude::*;
     use telemetry_nats::propagation;
     use thiserror::Error;
@@ -371,13 +371,35 @@ mod handlers {
             run_notify,
             server_tracker,
         } = state;
-        let mut ctx = ctx_builder
-            .build_for_change_set_as_system(workspace_id.into(), change_set_id.into())
-            .await?;
-
         let span = Span::current();
         span.record("si.workspace.id", workspace_id.to_string());
         span.record("si.change_set.id", change_set_id.to_string());
+
+        // We want to fetch the change set here because closed change sets may
+        // not even have a snapshot, so setting visibility will fail.
+        let no_change_set_ctx = ctx_builder.build_default().await?;
+        let change_set_is_open = ChangeSet::find(&no_change_set_ctx, change_set_id.into())
+            .await?
+            .map(|cs| cs.is_open())
+            .unwrap_or(false);
+
+        if !change_set_is_open {
+            send_rebase_reply_if_requested(
+                maybe_reply,
+                nats,
+                request,
+                RebaseStatus::Error {
+                    message: format!("change set {change_set_id} is not open, refusing rebase"),
+                },
+            )
+            .await?;
+            return Ok(());
+        }
+
+        // Now we can try and rebase
+        let mut ctx = ctx_builder
+            .build_for_change_set_as_system(workspace_id.into(), change_set_id.into())
+            .await?;
 
         let rebase_status = perform_rebase(&mut ctx, &request, &server_tracker)
             .await
@@ -427,12 +449,29 @@ mod handlers {
         }
 
         // If a reply was requested, send it
-        if let Some(reply) = maybe_reply {
+        send_rebase_reply_if_requested(maybe_reply, nats, request, rebase_status).await?;
+        // TODO(fnichol): hrm, is this *really* true that we've written to the change set. I mean,
+        // yes but until a dvu has finished this is an incomplete view?
+        let mut event = WsEvent::change_set_written(&ctx, change_set_id.into()).await?;
+        event.set_workspace_pk(workspace_id.into());
+        event.set_change_set_id(Some(change_set_id.into()));
+        event.publish_immediately(&ctx).await?;
+
+        Ok(())
+    }
+
+    async fn send_rebase_reply_if_requested(
+        maybe_reply_subject: Option<Subject>,
+        nats: NatsClient,
+        request: EnqueueUpdatesRequest,
+        status: RebaseStatus,
+    ) -> Result<()> {
+        if let Some(reply) = maybe_reply_subject {
             let response = EnqueueUpdatesResponse::new_current(EnqueueUpdatesResponseVCurrent {
                 id: request.id,
                 workspace_id: request.workspace_id,
                 change_set_id: request.change_set_id,
-                status: rebase_status,
+                status,
             });
 
             let info = ContentInfo::from(&response);
@@ -445,13 +484,6 @@ mod handlers {
                 .await
                 .map_err(Error::PublishReply)?;
         }
-
-        // TODO(fnichol): hrm, is this *really* true that we've written to the change set. I mean,
-        // yes but until a dvu has finished this is an incomplete view?
-        let mut event = WsEvent::change_set_written(&ctx, change_set_id.into()).await?;
-        event.set_workspace_pk(workspace_id.into());
-        event.set_change_set_id(Some(change_set_id.into()));
-        event.publish_immediately(&ctx).await?;
 
         Ok(())
     }
