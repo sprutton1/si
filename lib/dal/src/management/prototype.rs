@@ -7,6 +7,8 @@ use si_events::FuncRunId;
 use thiserror::Error;
 use veritech_client::{ComponentKind, ManagementResultSuccess};
 
+use crate::diagram::view::View;
+use crate::diagram::DiagramError;
 use crate::{
     func::runner::{FuncRunner, FuncRunnerError},
     id, implement_add_edge_to,
@@ -22,6 +24,8 @@ use crate::{
 pub enum ManagementPrototypeError {
     #[error("component error: {0}")]
     Component(#[from] ComponentError),
+    #[error("diagram error: {0}")]
+    Diagram(#[from] DiagramError),
     #[error("func runner error: {0}")]
     FuncRunner(#[from] FuncRunnerError),
     #[error("func runner recv error")]
@@ -188,7 +192,8 @@ impl ManagementPrototype {
         let management_func_id = ManagementPrototype::func_id(ctx, id).await?;
         let manager_component = Component::get_by_id(ctx, manager_component_id).await?;
         let manager_component_view = manager_component.view(ctx).await?;
-        let geometry = manager_component.geometry(ctx).await?;
+        let default_view_id = View::get_id_for_default(ctx).await?;
+        let geometry = manager_component.geometry(ctx, default_view_id).await?;
 
         let args = serde_json::json!({
             "this_component": {

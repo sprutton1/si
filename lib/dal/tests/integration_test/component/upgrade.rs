@@ -104,7 +104,7 @@ async fn auto_upgrade_component(ctx: &mut DalContext) {
     )
     .await
     .expect("could not create component");
-    let initial_diagram = Diagram::assemble(ctx)
+    let initial_diagram = Diagram::assemble_for_default_view(ctx)
         .await
         .expect("could not assemble diagram");
     assert_eq!(1, initial_diagram.components.len());
@@ -216,7 +216,7 @@ async fn auto_upgrade_component(ctx: &mut DalContext) {
     .expect("able to find anotherProp prop for variant one");
 
     // Check that the component has been auto upgraded
-    let one_component_on_the_graph = Diagram::assemble(ctx)
+    let one_component_on_the_graph = Diagram::assemble_for_default_view(ctx)
         .await
         .expect("could not assemble diagram");
     assert_eq!(one_component_on_the_graph.components.len(), 1);
@@ -295,7 +295,7 @@ async fn auto_upgrade_component(ctx: &mut DalContext) {
         .expect("got prototype");
     assert_eq!(create_prototype.kind, ActionKind::Create);
 
-    let upgraded_graph = Diagram::assemble(ctx)
+    let upgraded_graph = Diagram::assemble_for_default_view(ctx)
         .await
         .expect("could not assemble diagram");
     let upgraded_component = upgraded_graph

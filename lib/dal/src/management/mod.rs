@@ -418,6 +418,7 @@ async fn update_component(
         component
             .into_frontend_type(
                 ctx,
+                None,
                 component.change_status(ctx).await?,
                 &mut HashMap::new(),
             )

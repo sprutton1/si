@@ -499,7 +499,7 @@ async fn create_qualification_and_code_gen_with_existing_component(ctx: &mut Dal
     )
     .await
     .expect("could not create component");
-    let initial_diagram = Diagram::assemble(ctx)
+    let initial_diagram = Diagram::assemble_for_default_view(ctx)
         .await
         .expect("could not assemble diagram");
     assert_eq!(1, initial_diagram.components.len());

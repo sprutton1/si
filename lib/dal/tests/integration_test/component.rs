@@ -213,7 +213,7 @@ async fn create_and_determine_lineage(ctx: &DalContext) {
     );
 
     // Assemble the diagram just to make sure it works.
-    let _diagram = Diagram::assemble(ctx)
+    let _diagram = Diagram::assemble_for_default_view(ctx)
         .await
         .expect("could not assemble diagram");
 }
@@ -718,7 +718,7 @@ async fn paste_component_with_value(ctx: &mut DalContext) {
         component
             .component(ctx)
             .await
-            .copy_paste(ctx, component.geometry(ctx).await)
+            .create_copy(ctx, component.geometry(ctx).await)
             .await
             .expect("unable to paste component")
             .id(),
@@ -764,7 +764,7 @@ async fn paste_component_with_dependent_value(ctx: &mut DalContext) {
         downstream
             .component(ctx)
             .await
-            .copy_paste(ctx, downstream.geometry(ctx).await)
+            .create_copy(ctx, downstream.geometry(ctx).await)
             .await
             .expect("unable to paste component")
             .id(),

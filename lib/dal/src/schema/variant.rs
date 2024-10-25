@@ -96,8 +96,6 @@ pub enum SchemaVariantError {
     Component(#[from] Box<ComponentError>),
     #[error("content error: {0}")]
     ContentType(#[from] ContentTypeError),
-    #[error("default schema variant not found for schema: {0}")]
-    DefaultSchemaVariantNotFound(SchemaId),
     #[error("default variant not found: {0}")]
     DefaultVariantNotFound(String),
     #[error("func error: {0}")]
@@ -947,9 +945,8 @@ impl SchemaVariant {
         ctx: &DalContext,
         schema_id: SchemaId,
     ) -> SchemaVariantResult<Self> {
-        let default_schema_variant_id = Schema::get_default_schema_variant_by_id(ctx, schema_id)
-            .await?
-            .ok_or(SchemaVariantError::DefaultSchemaVariantNotFound(schema_id))?;
+        let default_schema_variant_id =
+            Schema::get_default_schema_variant_by_id_or_error(ctx, schema_id).await?;
 
         Self::get_by_id_or_error(ctx, default_schema_variant_id).await
     }
@@ -958,9 +955,8 @@ impl SchemaVariant {
         ctx: &DalContext,
         schema_id: SchemaId,
     ) -> SchemaVariantResult<SchemaVariantId> {
-        let default_schema_variant_id = Schema::get_default_schema_variant_by_id(ctx, schema_id)
-            .await?
-            .ok_or(SchemaVariantError::DefaultSchemaVariantNotFound(schema_id))?;
+        let default_schema_variant_id =
+            Schema::get_default_schema_variant_by_id_or_error(ctx, schema_id).await?;
         Ok(default_schema_variant_id)
     }
     pub async fn list_for_schema(

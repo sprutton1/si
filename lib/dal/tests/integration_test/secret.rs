@@ -308,7 +308,7 @@ async fn copy_paste_component_with_secrets_being_used(ctx: &mut DalContext, nw: 
             .expect("couldn't get geometry");
 
         component
-            .copy_paste(
+            .create_copy(
                 ctx,
                 RawGeometry {
                     x: geometry.x().to_string(),
@@ -333,7 +333,7 @@ async fn copy_paste_component_with_secrets_being_used(ctx: &mut DalContext, nw: 
     user_component
         .component(ctx)
         .await
-        .copy_paste(
+        .create_copy(
             ctx,
             RawGeometry {
                 x: user_component_geometry.x().to_string(),

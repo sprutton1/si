@@ -40,7 +40,7 @@ async fn components_removed_from_snapshot_have_virtual_diagram_entries(ctx: &mut
         .await
         .is_err());
 
-    let summary_diagram = Diagram::assemble(ctx)
+    let summary_diagram = Diagram::assemble_for_default_view(ctx)
         .await
         .expect("Unable to assemble summary diagram");
 

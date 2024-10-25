@@ -80,7 +80,7 @@ async fn update_variant(ctx: &mut DalContext) {
     create_component_for_default_schema_name(ctx, schema.name.clone(), "demo component")
         .await
         .expect("could not create component");
-    let diagram = Diagram::assemble(ctx)
+    let diagram = Diagram::assemble_for_default_view(ctx)
         .await
         .expect("could not assemble diagram");
     pretty_assertions_sorted::assert_eq!(1, diagram.components.len());
@@ -130,7 +130,7 @@ async fn update_variant(ctx: &mut DalContext) {
     create_component_for_default_schema_name(ctx, schema.name.clone(), "demo component 2")
         .await
         .expect("could not create component");
-    let diagram = Diagram::assemble(ctx)
+    let diagram = Diagram::assemble_for_default_view(ctx)
         .await
         .expect("could not assemble diagram");
     pretty_assertions_sorted::assert_eq!(2, diagram.components.len());
@@ -274,7 +274,7 @@ async fn update_variant_with_new_metadata(ctx: &mut DalContext) {
 
     // let's make sure the component has the correct default values
     let component_name = component.name(ctx).await.expect("could not get name");
-    let diagram = Diagram::assemble(ctx)
+    let diagram = Diagram::assemble_for_default_view(ctx)
         .await
         .expect("could not assemble diagram");
 
@@ -321,7 +321,7 @@ async fn update_variant_with_new_metadata(ctx: &mut DalContext) {
     assert_eq!(updated_variant_after_regen.link(), second_link);
 
     // component is as it was but with new schema variant id
-    let diagram = Diagram::assemble(ctx)
+    let diagram = Diagram::assemble_for_default_view(ctx)
         .await
         .expect("could not assemble diagram");
     assert_eq!(1, diagram.components.len());
@@ -392,7 +392,7 @@ async fn update_variant_with_new_metadata(ctx: &mut DalContext) {
     );
 
     // first component is not modified but reflects new schema variant specific metadata
-    let diagram = Diagram::assemble(ctx)
+    let diagram = Diagram::assemble_for_default_view(ctx)
         .await
         .expect("could not assemble diagram");
     assert_eq!(1, diagram.components.len());
@@ -440,7 +440,7 @@ async fn update_variant_with_new_metadata(ctx: &mut DalContext) {
     );
 
     // component has been upgraded to the new variant with the old type though
-    let diagram = Diagram::assemble(ctx)
+    let diagram = Diagram::assemble_for_default_view(ctx)
         .await
         .expect("could not assemble diagram");
     assert_eq!(1, diagram.components.len());
@@ -467,7 +467,7 @@ async fn update_variant_with_new_metadata(ctx: &mut DalContext) {
         .await
         .expect("could not commit");
     let second_component_name = component.name(ctx).await.expect("could not get name");
-    let diagram = Diagram::assemble(ctx)
+    let diagram = Diagram::assemble_for_default_view(ctx)
         .await
         .expect("could not assemble diagram");
     assert_eq!(2, diagram.components.len());
@@ -560,7 +560,7 @@ async fn update_variant_with_new_prototypes_for_new_func(ctx: &mut DalContext) {
     create_component_for_default_schema_name(ctx, &schema.name, "component")
         .await
         .expect("could not create component");
-    let diagram = Diagram::assemble(ctx)
+    let diagram = Diagram::assemble_for_default_view(ctx)
         .await
         .expect("could not assemble diagram");
     assert_eq!(1, diagram.components.len());
@@ -597,7 +597,7 @@ async fn update_variant_with_new_prototypes_for_new_func(ctx: &mut DalContext) {
     create_component_for_default_schema_name(ctx, schema.name, "component two")
         .await
         .expect("could not create component");
-    let diagram = Diagram::assemble(ctx)
+    let diagram = Diagram::assemble_for_default_view(ctx)
         .await
         .expect("could not assemble diagram");
     assert_eq!(2, diagram.components.len());
@@ -728,7 +728,7 @@ async fn update_variant_with_leaf_func(ctx: &mut DalContext) {
     let component_one = create_component_for_default_schema_name(ctx, &schema.name, "one")
         .await
         .expect("could not create component");
-    let diagram = Diagram::assemble(ctx)
+    let diagram = Diagram::assemble_for_default_view(ctx)
         .await
         .expect("could not assemble diagram");
     assert_eq!(1, diagram.components.len());
@@ -782,7 +782,7 @@ async fn update_variant_with_leaf_func(ctx: &mut DalContext) {
     let component_two = create_component_for_default_schema_name(ctx, &schema.name, "two")
         .await
         .expect("could not create component");
-    let diagram = Diagram::assemble(ctx)
+    let diagram = Diagram::assemble_for_default_view(ctx)
         .await
         .expect("could not assemble diagram");
     assert_eq!(2, diagram.components.len());
@@ -1032,7 +1032,7 @@ async fn update_variant_with_leaf_func(ctx: &mut DalContext) {
     let component_three = create_component_for_unlocked_schema_name(ctx, &schema.name, "three")
         .await
         .expect("could not create component");
-    let diagram = Diagram::assemble(ctx)
+    let diagram = Diagram::assemble_for_default_view(ctx)
         .await
         .expect("could not assemble diagram");
     assert_eq!(3, diagram.components.len());

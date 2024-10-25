@@ -35,6 +35,8 @@ pub const SCHEMA_VERSION: SchemaContentDiscriminants = SchemaContentDiscriminant
 pub enum SchemaError {
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
+    #[error("default schema variant not found for schema: {0}")]
+    DefaultSchemaVariantNotFound(SchemaId),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
     #[error("helper error: {0}")]
@@ -180,6 +182,13 @@ impl Schema {
         Self::get_default_schema_variant_by_id(ctx, self.id).await
     }
 
+    pub async fn get_default_schema_variant_id_or_error(
+        &self,
+        ctx: &DalContext,
+    ) -> SchemaResult<SchemaVariantId> {
+        Self::get_default_schema_variant_by_id_or_error(ctx, self.id).await
+    }
+
     pub async fn get_default_schema_variant_by_id(
         ctx: &DalContext,
         schema_id: SchemaId,
@@ -203,6 +212,15 @@ impl Schema {
         }
 
         Ok(None)
+    }
+
+    pub async fn get_default_schema_variant_by_id_or_error(
+        ctx: &DalContext,
+        schema_id: SchemaId,
+    ) -> SchemaResult<SchemaVariantId> {
+        Self::get_default_schema_variant_by_id(ctx, schema_id)
+            .await?
+            .ok_or(SchemaError::DefaultSchemaVariantNotFound(schema_id))
     }
 
     /// This method returns all [`SchemaVariantIds`](SchemaVariant) that are used by the [`Schema`]

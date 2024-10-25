@@ -7,8 +7,8 @@ mod schema_variant;
 
 pub use crate::audit_log::AuditLog;
 pub use crate::component::{
-    ChangeStatus, ConnectionAnnotation, DiagramSocket, DiagramSocketDirection,
-    DiagramSocketNodeSide, GridPoint, Size2D, SummaryDiagramComponent,
+    ChangeStatus, ConnectionAnnotation, DiagramComponentView, DiagramSocket,
+    DiagramSocketDirection, DiagramSocketNodeSide, GeometryAndView, GridPoint, RawGeometry, Size2D,
 };
 pub use crate::conflict::ConflictWithHead;
 pub use crate::func::{

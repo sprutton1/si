@@ -81,7 +81,9 @@ async fn make_multiple_trees(ctx: &mut DalContext) {
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
-    let diagram = Diagram::assemble(ctx).await.expect("got diagram");
+    let diagram = Diagram::assemble_for_default_view(ctx)
+        .await
+        .expect("got diagram");
     assert_eq!(
         2,                   // expected
         diagram.edges.len()  // actual
@@ -109,7 +111,9 @@ async fn make_chain_remove_middle(ctx: &mut DalContext) {
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
-    let diagram = Diagram::assemble(ctx).await.expect("got diagram");
+    let diagram = Diagram::assemble_for_default_view(ctx)
+        .await
+        .expect("got diagram");
     assert_eq!(
         0,                   // expected
         diagram.edges.len()  // actual
@@ -156,7 +160,9 @@ async fn make_chain_remove_middle(ctx: &mut DalContext) {
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
-    let diagram = Diagram::assemble(ctx).await.expect("got diagram");
+    let diagram = Diagram::assemble_for_default_view(ctx)
+        .await
+        .expect("got diagram");
     assert_eq!(
         1,                   // expected
         diagram.edges.len()  // actual
@@ -201,7 +207,9 @@ async fn make_chain_remove_middle(ctx: &mut DalContext) {
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
-    let diagram = Diagram::assemble(ctx).await.expect("got diagram");
+    let diagram = Diagram::assemble_for_default_view(ctx)
+        .await
+        .expect("got diagram");
     assert_eq!(
         2,                   // expected
         diagram.edges.len()  // actual
@@ -225,7 +233,9 @@ async fn make_chain_remove_middle(ctx: &mut DalContext) {
         .expect("could not commit and update snapshot to visibility");
 
     //make sure everything is cleaned up
-    let diagram = Diagram::assemble(ctx).await.expect("got diagram");
+    let diagram = Diagram::assemble_for_default_view(ctx)
+        .await
+        .expect("got diagram");
     assert_eq!(
         0,                   // expected
         diagram.edges.len()  // actual
@@ -361,7 +371,7 @@ async fn connect_and_disconnect_components_explicit_connection(ctx: &mut DalCont
     }
 
     // Assemble the diagram and check the edges.
-    let diagram = Diagram::assemble(ctx)
+    let diagram = Diagram::assemble_for_default_view(ctx)
         .await
         .expect("could not assemble the diagram");
     assert_eq!(2, diagram.edges.len());
@@ -487,7 +497,7 @@ async fn connect_to_one_destination_with_multiple_candidates_of_same_schema_vari
         .await
         .expect("could not commit and update snapshot to visibility");
 
-    let diagram = Diagram::assemble(ctx)
+    let diagram = Diagram::assemble_for_default_view(ctx)
         .await
         .expect("could not assemble the diagram");
 
@@ -621,7 +631,7 @@ async fn remove_connection(ctx: &mut DalContext) {
     }
 
     // Assemble the diagram and check the edges.
-    let diagram = Diagram::assemble(ctx)
+    let diagram = Diagram::assemble_for_default_view(ctx)
         .await
         .expect("could not assemble the diagram");
     assert_eq!(2, diagram.edges.len());
@@ -658,7 +668,7 @@ async fn remove_connection(ctx: &mut DalContext) {
     }
 
     // Assemble the diagram and check the edges.
-    let diagram = Diagram::assemble(ctx)
+    let diagram = Diagram::assemble_for_default_view(ctx)
         .await
         .expect("could not assemble the diagram");
     assert_eq!(1, diagram.edges.len());

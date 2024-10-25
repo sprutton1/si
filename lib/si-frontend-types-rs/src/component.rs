@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use si_events::ulid::Ulid;
 use si_events::{ComponentId, SchemaId, SchemaVariantId};
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 
@@ -20,6 +21,20 @@ pub enum ChangeStatus {
 pub struct GridPoint {
     pub x: isize,
     pub y: isize,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, Eq, PartialEq)]
+pub struct RawGeometry {
+    pub x: String,
+    pub y: String,
+    pub width: Option<String>,
+    pub height: Option<String>,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, Eq, PartialEq)]
+pub struct GeometryAndView {
+    pub view_id: Ulid,
+    pub geometry: RawGeometry,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
@@ -91,7 +106,7 @@ pub struct DiagramSocket {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all(serialize = "camelCase"))]
-pub struct SummaryDiagramComponent {
+pub struct DiagramComponentView {
     pub id: ComponentId,
     pub component_id: ComponentId,
     pub schema_name: String,
@@ -102,8 +117,6 @@ pub struct SummaryDiagramComponent {
     pub sockets: Vec<DiagramSocket>,
     pub display_name: String,
     pub resource_id: String,
-    pub position: GridPoint,
-    pub size: Size2D,
     pub color: String,
     pub component_type: String,
     pub change_status: ChangeStatus,
@@ -115,4 +128,5 @@ pub struct SummaryDiagramComponent {
     pub to_delete: bool,
     pub can_be_upgraded: bool,
     pub from_base_change_set: bool,
+    pub view_data: Option<GeometryAndView>,
 }

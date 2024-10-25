@@ -12,20 +12,13 @@ use crate::{DalContext, EdgeWeightKind};
 use jwt_simple::prelude::{Deserialize, Serialize};
 use si_events::ulid::Ulid;
 use si_events::ContentHash;
+use si_frontend_types::RawGeometry;
 use std::sync::Arc;
 
 const DEFAULT_COMPONENT_X_POSITION: &str = "0";
 const DEFAULT_COMPONENT_Y_POSITION: &str = "0";
 const DEFAULT_COMPONENT_WIDTH: &str = "500";
 const DEFAULT_COMPONENT_HEIGHT: &str = "500";
-
-#[derive(Deserialize, Serialize, Debug, Clone, Eq, PartialEq)]
-pub struct RawGeometry {
-    pub x: String,
-    pub y: String,
-    pub width: Option<String>,
-    pub height: Option<String>,
-}
 
 impl From<Geometry> for RawGeometry {
     fn from(value: Geometry) -> Self {
@@ -63,6 +56,10 @@ impl Geometry {
 
     pub fn raw(self) -> RawGeometry {
         self.into()
+    }
+
+    pub fn id(&self) -> GeometryId {
+        self.id
     }
 
     pub fn x(&self) -> &str {
@@ -136,6 +133,29 @@ impl Geometry {
         ))
     }
 
+    pub async fn component_id(
+        ctx: &DalContext,
+        geometry_id: GeometryId,
+    ) -> DiagramResult<ComponentId> {
+        let snap = ctx.workspace_snapshot()?;
+
+        let component_id = snap
+            .outgoing_targets_for_edge_weight_kind(
+                geometry_id,
+                EdgeWeightKindDiscriminants::Represents,
+            )
+            .await?
+            .pop()
+            .ok_or(DiagramError::ComponentNotFoundForGeometry(geometry_id))?;
+
+        Ok(snap
+            .get_node_weight(component_id)
+            .await?
+            .get_component_node_weight()?
+            .id
+            .into())
+    }
+
     pub async fn get_by_id(ctx: &DalContext, component_id: GeometryId) -> DiagramResult<Self> {
         let (node_weight, content) = Self::get_node_weight_and_content(ctx, component_id).await?;
         Ok(Self::assemble(node_weight, content))
@@ -166,11 +186,39 @@ impl Geometry {
         Ok(geometries)
     }
 
-    pub async fn get_by_component_and_view(
+    pub async fn list_by_view_id(
+        ctx: &DalContext,
+        view_id: ViewId,
+    ) -> DiagramResult<Vec<Geometry>> {
+        let snap = ctx.workspace_snapshot()?;
+
+        let mut geometries = vec![];
+        for geometry_idx in snap
+            .outgoing_targets_for_edge_weight_kind(view_id, EdgeWeightKindDiscriminants::Use)
+            .await?
+        {
+            let node_weight = snap
+                .get_node_weight(geometry_idx)
+                .await?
+                .get_geometry_node_weight()?;
+
+            let content = Self::try_get_content(ctx, &node_weight.content_hash())
+                .await?
+                .ok_or(WorkspaceSnapshotError::MissingContentFromStore(
+                    node_weight.id().into(),
+                ))?;
+
+            geometries.push(Self::assemble(node_weight, content))
+        }
+
+        Ok(geometries)
+    }
+
+    pub async fn try_get_by_component_and_view(
         ctx: &DalContext,
         component_id: ComponentId,
         view_id: ViewId,
-    ) -> DiagramResult<Self> {
+    ) -> DiagramResult<Option<Self>> {
         let snap = ctx.workspace_snapshot()?;
 
         let mut maybe_weight = None;
@@ -194,10 +242,7 @@ impl Geometry {
         }
 
         let Some(node_weight) = maybe_weight else {
-            return Err(DiagramError::GeometryNotFoundForComponentAndView(
-                component_id,
-                view_id,
-            ));
+            return Ok(None);
         };
 
         let content = Self::try_get_content(ctx, &node_weight.content_hash())
@@ -206,7 +251,17 @@ impl Geometry {
                 node_weight.id(),
             ))?;
 
-        Ok(Self::assemble(node_weight, content))
+        Ok(Some(Self::assemble(node_weight, content)))
+    }
+
+    pub async fn get_by_component_and_view(
+        ctx: &DalContext,
+        component_id: ComponentId,
+        view_id: ViewId,
+    ) -> DiagramResult<Self> {
+        Self::try_get_by_component_and_view(ctx, component_id, view_id)
+            .await?
+            .ok_or_else(|| DiagramError::GeometryNotFoundForComponentAndView(component_id, view_id))
     }
 
     pub async fn get_view_id_by_id(ctx: &DalContext, id: GeometryId) -> DiagramResult<ViewId> {
@@ -271,13 +326,16 @@ impl Geometry {
         ctx: &DalContext,
         new_geometry: RawGeometry,
     ) -> DiagramResult<()> {
+        let timestamp = Timestamp::now();
+        let geometry = new_geometry.clone();
+
         let (hash, _) = ctx
             .layer_db()
             .cas()
             .write(
                 Arc::new(
                     GeometryContent::V1(GeometryContentV1 {
-                        timestamp: Timestamp::now(),
+                        timestamp,
                         x: new_geometry.x,
                         y: new_geometry.y,
                         width: new_geometry.width,
@@ -294,6 +352,12 @@ impl Geometry {
         ctx.workspace_snapshot()?
             .update_content(self.id.into(), hash)
             .await?;
+
+        self.x = geometry.x;
+        self.y = geometry.y;
+        self.width = geometry.width;
+        self.height = geometry.height;
+        self.timestamp = timestamp;
 
         Ok(())
     }

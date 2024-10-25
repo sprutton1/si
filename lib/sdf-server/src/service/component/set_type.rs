@@ -11,9 +11,10 @@ use axum::{
     extract::{Host, OriginalUri},
     Json,
 };
-use dal::diagram::geometry::RawGeometry;
+use dal::diagram::view::View;
 use dal::{ChangeSet, Component, ComponentId, ComponentType, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
+use si_frontend_types::RawGeometry;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -45,10 +46,13 @@ pub async fn set_type(
     Component::set_type_by_id(&ctx, component_id, component_type).await?;
     let mut component = Component::get_by_id(&ctx, component_id).await?;
 
+    let default_view_id = View::get_id_for_default(&ctx).await?;
+
     if let Some(geometry) = overridden_geometry {
         component
             .set_geometry(
                 &ctx,
+                default_view_id,
                 geometry.x,
                 geometry.y,
                 geometry.width,
@@ -60,7 +64,11 @@ pub async fn set_type(
     let component = Component::get_by_id(&ctx, component_id).await?;
     let mut socket_map = HashMap::new();
     let payload = component
-        .into_frontend_type(&ctx, component.change_status(&ctx).await?, &mut socket_map)
+        .into_frontend_type_for_default_view(
+            &ctx,
+            component.change_status(&ctx).await?,
+            &mut socket_map,
+        )
         .await?;
     WsEvent::component_updated(&ctx, payload)
         .await?

@@ -22,7 +22,7 @@ use dal_test::helpers::{
 };
 use dal_test::{test, WorkspaceSignup};
 use pretty_assertions_sorted::assert_eq;
-use si_frontend_types::SummaryDiagramComponent;
+use si_frontend_types::DiagramComponentView;
 use std::collections::HashMap;
 
 mod omega_nesting;
@@ -180,7 +180,7 @@ async fn convert_component_to_frame_and_attach_no_nesting(ctx: &mut DalContext) 
         .expect("could not commit");
 
     // Assemble the diagram and ensure we see the right number of components.
-    let diagram = Diagram::assemble(ctx)
+    let diagram = Diagram::assemble_for_default_view(ctx)
         .await
         .expect("could not assemble diagram");
     assert_eq!(2, diagram.components.len());
@@ -3468,13 +3468,13 @@ async fn change_type_frames(ctx: &mut DalContext) {
 }
 
 struct DiagramByKey {
-    pub components: HashMap<String, (SummaryDiagramComponent, Vec<SummaryDiagramInferredEdge>)>,
+    pub components: HashMap<String, (DiagramComponentView, Vec<SummaryDiagramInferredEdge>)>,
     pub edges: HashMap<String, SummaryDiagramEdge>,
 }
 
 impl DiagramByKey {
     pub async fn assemble(ctx: &DalContext) -> DiagramResult<Self> {
-        let diagram = Diagram::assemble(ctx).await?;
+        let diagram = Diagram::assemble_for_default_view(ctx).await?;
 
         let mut components = HashMap::new();
         for component in &diagram.components {

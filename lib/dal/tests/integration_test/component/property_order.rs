@@ -331,7 +331,7 @@ async fn child_property_value_remains_after_update_and_paste(
         component
             .component(ctx)
             .await
-            .copy_paste(ctx, component.geometry(ctx).await)
+            .create_copy(ctx, component.geometry(ctx).await)
             .await
             .expect("unable to paste component")
             .id(),

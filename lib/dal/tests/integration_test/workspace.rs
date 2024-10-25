@@ -86,7 +86,9 @@ async fn export_import_loop(ctx: &mut DalContext) {
         .expect("update context to use imported data");
 
     // Check that the component exists with the correct value
-    let diagram = Diagram::assemble(ctx).await.expect("load diagram");
+    let diagram = Diagram::assemble_for_default_view(ctx)
+        .await
+        .expect("load diagram");
 
     // Check that the component exists
     assert_eq!(
