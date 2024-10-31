@@ -17,13 +17,13 @@ pub const PARTITION_KEY: &str = "workspace_id";
 
 #[derive(Debug, Clone)]
 pub struct FuncRunLogDb {
-    pub cache: Arc<LayerCache<Arc<FuncRunLog>>>,
+    pub cache: Arc<LayerCache>,
     persister_client: PersisterClient,
     get_for_func_run_id_query: String,
 }
 
 impl FuncRunLogDb {
-    pub fn new(cache: Arc<LayerCache<Arc<FuncRunLog>>>, persister_client: PersisterClient) -> Self {
+    pub fn new(cache: Arc<LayerCache>, persister_client: PersisterClient) -> Self {
         Self {
             cache,
             persister_client,

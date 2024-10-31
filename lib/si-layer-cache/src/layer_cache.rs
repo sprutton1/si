@@ -3,7 +3,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 use std::{collections::HashMap, fmt::Display};
 
-use serde::{de::DeserializeOwned, Serialize};
+use serde::de::DeserializeOwned;
 use si_data_pg::PgPool;
 use si_runtime::DedicatedExecutor;
 use telemetry::prelude::*;
@@ -17,21 +17,15 @@ use crate::pg::PgLayer;
 use crate::LayerDbError;
 
 #[derive(Debug, Clone)]
-pub struct LayerCache<V>
-where
-    V: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-{
-    cache: Cache<V>,
+pub struct LayerCache {
+    cache: Cache,
     name: String,
     pg: PgLayer,
     #[allow(dead_code)]
     compute_executor: DedicatedExecutor,
 }
 
-impl<V> LayerCache<V>
-where
-    V: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-{
+impl LayerCache {
     pub async fn new(
         name: &str,
         pg_pool: PgPool,
@@ -44,7 +38,7 @@ where
 
         let pg = PgLayer::new(pg_pool.clone(), name);
 
-        let lc: Arc<LayerCache<V>> = LayerCache {
+        let lc: Arc<LayerCache> = LayerCache {
             cache,
             name: name.to_string(),
             pg,
@@ -64,7 +58,10 @@ where
         Ok(())
     }
 
-    pub async fn get(&self, key: Arc<str>) -> LayerDbResult<Option<V>> {
+    pub async fn get<V>(&self, key: Arc<str>) -> LayerDbResult<Option<V>>
+    where
+        V: Clone + DeserializeOwned + Send + Sync + 'static,
+    {
         Ok(match self.cache.get(&key).await {
             Some(memory_value) => Some(memory_value),
 
@@ -96,10 +93,11 @@ where
         self.pg.get(&key).await
     }
 
-    pub async fn get_bulk<K>(&self, keys: &[K]) -> LayerDbResult<HashMap<K, V>>
+    pub async fn get_bulk<K, V>(&self, keys: &[K]) -> LayerDbResult<HashMap<K, V>>
     where
         K: Clone + Display + Eq + Hash + FromStr,
         <K as FromStr>::Err: Display,
+        V: Clone + DeserializeOwned + Send + Sync + 'static,
     {
         let mut found_keys = HashMap::new();
         let mut not_found: Vec<Arc<str>> = vec![];
@@ -135,13 +133,16 @@ where
         Ok(found_keys)
     }
 
-    pub async fn deserialize_memory_value(&self, bytes: Arc<Vec<u8>>) -> LayerDbResult<V> {
+    pub async fn deserialize_memory_value<V>(&self, bytes: Arc<Vec<u8>>) -> LayerDbResult<V>
+    where
+        V: Clone + DeserializeOwned + Send + Sync + 'static,
+    {
         serialize::from_bytes_async(&bytes)
             .await
             .map_err(Into::into)
     }
 
-    pub fn cache(&self) -> Cache<V> {
+    pub fn cache(&self) -> Cache {
         self.cache.clone()
     }
 
@@ -157,7 +158,10 @@ where
         self.cache.contains(key)
     }
 
-    pub fn insert(&self, key: Arc<str>, value: V) {
+    pub fn insert<V>(&self, key: Arc<str>, value: V)
+    where
+        V: Clone + DeserializeOwned + Send + Sync + 'static,
+    {
         if !self.cache.contains(&key) {
             self.cache.insert(key, value);
         }
@@ -168,7 +172,11 @@ where
             .insert_raw_bytes(key.clone(), serialize_value.clone());
     }
 
-    pub fn insert_or_update(&self, key: Arc<str>, value: V) {
+    pub fn insert_or_update<V: Clone + DeserializeOwned + Send + Sync + 'static>(
+        &self,
+        key: Arc<str>,
+        value: V,
+    ) {
         self.cache.insert(key, value);
     }
 

@@ -25,7 +25,7 @@ pub const PARTITION_KEY: &str = "workspace_id";
 
 #[derive(Debug, Clone)]
 pub struct FuncRunDb {
-    pub cache: Arc<LayerCache<Arc<FuncRun>>>,
+    pub cache: Arc<LayerCache>,
     persister_client: PersisterClient,
     ready_many_for_workspace_id_query: String,
     get_last_qualification_for_attribute_value_id: String,
@@ -34,7 +34,7 @@ pub struct FuncRunDb {
 }
 
 impl FuncRunDb {
-    pub fn new(cache: Arc<LayerCache<Arc<FuncRun>>>, persister_client: PersisterClient) -> Self {
+    pub fn new(cache: Arc<LayerCache>, persister_client: PersisterClient) -> Self {
         Self {
             cache,
             persister_client,

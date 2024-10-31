@@ -1,8 +1,6 @@
 use std::sync::Arc;
 
-use serde::{de::DeserializeOwned, Serialize};
 use si_data_nats::NatsClient;
-use si_events::{FuncRun, FuncRunLog};
 use strum::{AsRefStr, EnumString};
 use telemetry::prelude::*;
 use tokio::sync::mpsc::UnboundedReceiver;
@@ -26,48 +24,31 @@ enum CacheName {
     WorkspaceSnapshots,
 }
 
-pub struct CacheUpdatesTask<
-    CasValue,
-    EncryptedSecretValue,
-    WorkspaceSnapshotValue,
-    RebaseBatchValue,
-> where
-    CasValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-    EncryptedSecretValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-    WorkspaceSnapshotValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-    RebaseBatchValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-{
-    cas_cache: Arc<LayerCache<Arc<CasValue>>>,
-    encrypted_secret_cache: Arc<LayerCache<Arc<EncryptedSecretValue>>>,
-    func_run_cache: Arc<LayerCache<Arc<FuncRun>>>,
-    func_run_log_cache: Arc<LayerCache<Arc<FuncRunLog>>>,
-    rebase_batch_cache: Arc<LayerCache<Arc<RebaseBatchValue>>>,
-    snapshot_cache: Arc<LayerCache<Arc<WorkspaceSnapshotValue>>>,
+pub struct CacheUpdatesTask {
+    cas_cache: Arc<LayerCache>,
+    encrypted_secret_cache: Arc<LayerCache>,
+    func_run_cache: Arc<LayerCache>,
+    func_run_log_cache: Arc<LayerCache>,
+    rebase_batch_cache: Arc<LayerCache>,
+    snapshot_cache: Arc<LayerCache>,
     event_channel: UnboundedReceiver<LayeredEvent>,
     shutdown_token: CancellationToken,
     tracker: TaskTracker,
 }
 
-impl<CasValue, EncryptedSecretValue, WorkspaceSnapshotValue, RebaseBatchValue>
-    CacheUpdatesTask<CasValue, EncryptedSecretValue, WorkspaceSnapshotValue, RebaseBatchValue>
-where
-    CasValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-    EncryptedSecretValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-    WorkspaceSnapshotValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-    RebaseBatchValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-{
+impl CacheUpdatesTask {
     const NAME: &'static str = "LayerDB::CacheUpdatesTask";
 
     #[allow(clippy::too_many_arguments)]
     pub async fn create(
         instance_id: Ulid,
         nats_client: &NatsClient,
-        cas_cache: Arc<LayerCache<Arc<CasValue>>>,
-        encrypted_secret_cache: Arc<LayerCache<Arc<EncryptedSecretValue>>>,
-        func_run_cache: Arc<LayerCache<Arc<FuncRun>>>,
-        func_run_log_cache: Arc<LayerCache<Arc<FuncRunLog>>>,
-        rebase_batch_cache: Arc<LayerCache<Arc<RebaseBatchValue>>>,
-        snapshot_cache: Arc<LayerCache<Arc<WorkspaceSnapshotValue>>>,
+        cas_cache: Arc<LayerCache>,
+        encrypted_secret_cache: Arc<LayerCache>,
+        func_run_cache: Arc<LayerCache>,
+        func_run_log_cache: Arc<LayerCache>,
+        rebase_batch_cache: Arc<LayerCache>,
+        snapshot_cache: Arc<LayerCache>,
         shutdown_token: CancellationToken,
     ) -> LayerDbResult<Self> {
         let tracker = TaskTracker::new();
@@ -120,36 +101,24 @@ where
     }
 }
 
-struct CacheUpdateTask<Q, R, S, T>
-where
-    Q: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-    R: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-    S: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-    T: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-{
-    cas_cache: Arc<LayerCache<Arc<Q>>>,
-    encrypted_secret_cache: Arc<LayerCache<Arc<R>>>,
-    func_run_cache: Arc<LayerCache<Arc<FuncRun>>>,
-    func_run_log_cache: Arc<LayerCache<Arc<FuncRunLog>>>,
-    snapshot_cache: Arc<LayerCache<Arc<S>>>,
-    rebase_batch_cache: Arc<LayerCache<Arc<T>>>,
+struct CacheUpdateTask {
+    cas_cache: Arc<LayerCache>,
+    encrypted_secret_cache: Arc<LayerCache>,
+    func_run_cache: Arc<LayerCache>,
+    func_run_log_cache: Arc<LayerCache>,
+    snapshot_cache: Arc<LayerCache>,
+    rebase_batch_cache: Arc<LayerCache>,
 }
 
-impl<Q, R, S, T> CacheUpdateTask<Q, R, S, T>
-where
-    Q: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-    R: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-    S: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-    T: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-{
+impl CacheUpdateTask {
     fn new(
-        cas_cache: Arc<LayerCache<Arc<Q>>>,
-        encrypted_secret_cache: Arc<LayerCache<Arc<R>>>,
-        func_run_cache: Arc<LayerCache<Arc<FuncRun>>>,
-        func_run_log_cache: Arc<LayerCache<Arc<FuncRunLog>>>,
-        snapshot_cache: Arc<LayerCache<Arc<S>>>,
-        rebase_batch_cache: Arc<LayerCache<Arc<T>>>,
-    ) -> CacheUpdateTask<Q, R, S, T> {
+        cas_cache: Arc<LayerCache>,
+        encrypted_secret_cache: Arc<LayerCache>,
+        func_run_cache: Arc<LayerCache>,
+        func_run_log_cache: Arc<LayerCache>,
+        snapshot_cache: Arc<LayerCache>,
+        rebase_batch_cache: Arc<LayerCache>,
+    ) -> CacheUpdateTask {
         CacheUpdateTask {
             cas_cache,
             encrypted_secret_cache,

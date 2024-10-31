@@ -18,32 +18,29 @@ pub const CACHE_NAME: &str = "rebase_batches";
 pub const PARTITION_KEY: &str = "rebase_batches";
 
 #[derive(Debug, Clone)]
-pub struct RebaseBatchDb<V>
-where
-    V: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-{
-    pub cache: Arc<LayerCache<Arc<V>>>,
+pub struct RebaseBatchDb {
+    pub cache: Arc<LayerCache>,
     persister_client: PersisterClient,
 }
 
-impl<V> RebaseBatchDb<V>
-where
-    V: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-{
-    pub fn new(cache: Arc<LayerCache<Arc<V>>>, persister_client: PersisterClient) -> Self {
+impl RebaseBatchDb {
+    pub fn new(cache: Arc<LayerCache>, persister_client: PersisterClient) -> Self {
         Self {
             cache,
             persister_client,
         }
     }
 
-    pub fn write(
+    pub fn write<V>(
         &self,
         value: Arc<V>,
         web_events: Option<Vec<WebEvent>>,
         tenancy: Tenancy,
         actor: Actor,
-    ) -> LayerDbResult<(RebaseBatchAddress, PersisterStatusReader)> {
+    ) -> LayerDbResult<(RebaseBatchAddress, PersisterStatusReader)>
+    where
+        V: Clone + DeserializeOwned + Serialize + Send + Sync + 'static,
+    {
         let value_clone = value.clone();
         let postcard_value = serialize::to_vec(&value)?;
 
@@ -75,7 +72,10 @@ where
             si.rebase_batch.address = %key,
         )
     )]
-    pub async fn read(&self, key: &RebaseBatchAddress) -> LayerDbResult<Option<Arc<V>>> {
+    pub async fn read<V>(&self, key: &RebaseBatchAddress) -> LayerDbResult<Option<Arc<V>>>
+    where
+        V: Clone + DeserializeOwned + Serialize + Send + Sync + 'static,
+    {
         self.cache.get(key.to_string().into()).await
     }
 
@@ -90,10 +90,13 @@ where
             si.rebase_batch.address = %key,
         )
     )]
-    pub async fn read_wait_for_memory(
+    pub async fn read_wait_for_memory<V>(
         &self,
         key: &RebaseBatchAddress,
-    ) -> LayerDbResult<Option<Arc<V>>> {
+    ) -> LayerDbResult<Option<Arc<V>>>
+    where
+        V: Clone + DeserializeOwned + Serialize + Send + Sync + 'static,
+    {
         let span = current_span_for_instrument_at!("debug");
 
         let key: Arc<str> = key.to_string().into();

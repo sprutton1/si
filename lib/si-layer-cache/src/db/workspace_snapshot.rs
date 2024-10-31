@@ -18,32 +18,29 @@ pub const CACHE_NAME: &str = "workspace_snapshots";
 pub const PARTITION_KEY: &str = "workspace_snapshots";
 
 #[derive(Debug, Clone)]
-pub struct WorkspaceSnapshotDb<V>
-where
-    V: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-{
-    pub cache: Arc<LayerCache<Arc<V>>>,
+pub struct WorkspaceSnapshotDb {
+    pub cache: Arc<LayerCache>,
     persister_client: PersisterClient,
 }
 
-impl<V> WorkspaceSnapshotDb<V>
-where
-    V: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-{
-    pub fn new(cache: Arc<LayerCache<Arc<V>>>, persister_client: PersisterClient) -> Self {
+impl WorkspaceSnapshotDb {
+    pub fn new(cache: Arc<LayerCache>, persister_client: PersisterClient) -> Self {
         Self {
             cache,
             persister_client,
         }
     }
 
-    pub fn write(
+    pub fn write<V>(
         &self,
         value: Arc<V>,
         web_events: Option<Vec<WebEvent>>,
         tenancy: Tenancy,
         actor: Actor,
-    ) -> LayerDbResult<(WorkspaceSnapshotAddress, PersisterStatusReader)> {
+    ) -> LayerDbResult<(WorkspaceSnapshotAddress, PersisterStatusReader)>
+    where
+        V: Clone + DeserializeOwned + Serialize + Send + Sync + 'static,
+    {
         let value_clone = value.clone();
         let postcard_value = serialize::to_vec(&value)?;
 
@@ -75,7 +72,10 @@ where
             si.workspace_snapshot.address = %key,
         )
     )]
-    pub async fn read(&self, key: &WorkspaceSnapshotAddress) -> LayerDbResult<Option<Arc<V>>> {
+    pub async fn read<V>(&self, key: &WorkspaceSnapshotAddress) -> LayerDbResult<Option<Arc<V>>>
+    where
+        V: Clone + DeserializeOwned + Serialize + Send + Sync + 'static,
+    {
         self.cache.get(key.to_string().into()).await
     }
 
@@ -90,10 +90,13 @@ where
             si.workspace_snapshot.address = %key,
         )
     )]
-    pub async fn read_wait_for_memory(
+    pub async fn read_wait_for_memory<V>(
         &self,
         key: &WorkspaceSnapshotAddress,
-    ) -> LayerDbResult<Option<Arc<V>>> {
+    ) -> LayerDbResult<Option<Arc<V>>>
+    where
+        V: Clone + DeserializeOwned + Serialize + Send + Sync + 'static,
+    {
         let span = current_span_for_instrument_at!("debug");
 
         let key: Arc<str> = key.to_string().into();

@@ -2,6 +2,7 @@ use foyer::{
     DirectFsDeviceOptions, Engine, FifoPicker, HybridCache, HybridCacheBuilder, LargeEngineOptions,
     RateLimitPicker, RecoverMode,
 };
+use std::any::Any;
 use std::cmp::min;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -22,26 +23,17 @@ const DEFAULT_DISK_INDEXER_SHARDS: usize = 64;
 const DEFAULT_DISK_RECLAIMERS: usize = 2;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-enum MaybeDeserialized<V>
-where
-    V: Serialize + Clone + Send + Sync + 'static,
-{
+enum MaybeDeserialized {
     RawBytes(Vec<u8>),
-    DeserializedValue(V),
+    DeserializedValue(Box<dyn Any + Serialize + DeserializeOwned + Send + Sync>),
 }
 
 #[derive(Clone, Debug)]
-pub struct Cache<V>
-where
-    V: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-{
-    cache: HybridCache<Arc<str>, MaybeDeserialized<V>>,
+pub struct Cache {
+    cache: HybridCache<Arc<str>, MaybeDeserialized>,
 }
 
-impl<V> Cache<V>
-where
-    V: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-{
+impl Cache {
     pub async fn new(config: CacheConfig) -> LayerDbResult<Self> {
         let mem_cap = min(
             (config.memory as f32 * config.memory_percentage) as usize,
@@ -55,9 +47,9 @@ where
             "Creating cache {} with memory capcity of {} and disk capacity of {}",
             config.name, mem_cap, disk_cap
         );
-        let cache: HybridCache<Arc<str>, MaybeDeserialized<V>> = HybridCacheBuilder::new()
+        let cache: HybridCache<Arc<str>, MaybeDeserialized> = HybridCacheBuilder::new()
             .memory(mem_cap)
-            .with_weighter(|_key: &Arc<str>, value: &MaybeDeserialized<V>| size_of_val(value))
+            .with_weighter(|_key: &Arc<str>, value: &MaybeDeserialized| size_of_val(value))
             .storage(Engine::Large)
             .with_admission_picker(Arc::new(RateLimitPicker::new(
                 config.disk_admission_rate_limit,
@@ -81,10 +73,13 @@ where
         Ok(Self { cache })
     }
 
-    pub async fn get(&self, key: &str) -> Option<V> {
+    pub async fn get<V>(&self, key: &str) -> Option<V>
+    where
+        V: Clone + DeserializeOwned + Send + Sync + 'static,
+    {
         match self.cache.obtain(key.into()).await {
             Ok(Some(entry)) => match entry.value() {
-                MaybeDeserialized::DeserializedValue(v) => Some(v.clone()),
+                MaybeDeserialized::DeserializedValue(v) => v.downcast_ref::<V>().cloned(),
                 MaybeDeserialized::RawBytes(bytes) => {
                     // If we fail to deserialize the raw bytes for some reason, pretend that we never
                     // had the key in the first place, and also remove it from the cache.
@@ -110,9 +105,12 @@ where
         }
     }
 
-    pub fn insert(&self, key: Arc<str>, value: V) {
+    pub fn insert<V>(&self, key: Arc<str>, value: V)
+    where
+        V: Clone + Send + Sync + 'static,
+    {
         self.cache
-            .insert(key, MaybeDeserialized::DeserializedValue(value));
+            .insert(key, MaybeDeserialized::DeserializedValue(Box::new(value)));
     }
 
     pub fn insert_raw_bytes(&self, key: Arc<str>, raw_bytes: Vec<u8>) {

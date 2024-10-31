@@ -1,12 +1,11 @@
 use serde::Deserialize;
 use si_data_pg::PgPoolConfig;
 use si_runtime::DedicatedExecutor;
-use std::{future::IntoFuture, io, sync::Arc};
+use std::{future::IntoFuture, io};
 
-use serde::{de::DeserializeOwned, Serialize};
+use serde::Serialize;
 use si_data_nats::{NatsClient, NatsConfig};
 use si_data_pg::PgPool;
-use si_events::{FuncRun, FuncRunLog};
 use telemetry::prelude::*;
 use tokio::sync::mpsc;
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
@@ -38,19 +37,13 @@ pub mod serialize;
 pub mod workspace_snapshot;
 
 #[derive(Debug, Clone)]
-pub struct LayerDb<CasValue, EncryptedSecretValue, WorkspaceSnapshotValue, RebaseBatchValue>
-where
-    CasValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-    EncryptedSecretValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-    WorkspaceSnapshotValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-    RebaseBatchValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-{
-    cas: CasDb<CasValue>,
-    encrypted_secret: EncryptedSecretDb<EncryptedSecretValue>,
+pub struct LayerDb {
+    cas: CasDb,
+    encrypted_secret: EncryptedSecretDb,
     func_run: FuncRunDb,
     func_run_log: FuncRunLogDb,
-    rebase_batch: RebaseBatchDb<RebaseBatchValue>,
-    workspace_snapshot: WorkspaceSnapshotDb<WorkspaceSnapshotValue>,
+    rebase_batch: RebaseBatchDb,
+    workspace_snapshot: WorkspaceSnapshotDb,
     pg_pool: PgPool,
     nats_client: NatsClient,
     persister_client: PersisterClient,
@@ -58,14 +51,7 @@ where
     instance_id: Ulid,
 }
 
-impl<CasValue, EncryptedSecretValue, WorkspaceSnapshotValue, RebaseBatchValue>
-    LayerDb<CasValue, EncryptedSecretValue, WorkspaceSnapshotValue, RebaseBatchValue>
-where
-    CasValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-    EncryptedSecretValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-    WorkspaceSnapshotValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-    RebaseBatchValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-{
+impl LayerDb {
     #[instrument(name = "layer_db.init.from_config", level = "info", skip_all)]
     pub async fn from_config(
         config: LayerDbConfig,
@@ -100,7 +86,7 @@ where
         let (tx, rx) = mpsc::unbounded_channel();
         let persister_client = PersisterClient::new(tx);
 
-        let cas_cache: Arc<LayerCache<Arc<CasValue>>> = LayerCache::new(
+        let cas_cache = LayerCache::new(
             cas::CACHE_NAME,
             pg_pool.clone(),
             cache_config
@@ -114,7 +100,7 @@ where
         )
         .await?;
 
-        let encrypted_secret_cache: Arc<LayerCache<Arc<EncryptedSecretValue>>> = LayerCache::new(
+        let encrypted_secret_cache = LayerCache::new(
             encrypted_secret::CACHE_NAME,
             pg_pool.clone(),
             cache_config
@@ -128,7 +114,7 @@ where
         )
         .await?;
 
-        let func_run_cache: Arc<LayerCache<Arc<FuncRun>>> = LayerCache::new(
+        let func_run_cache = LayerCache::new(
             func_run::CACHE_NAME,
             pg_pool.clone(),
             cache_config
@@ -142,7 +128,7 @@ where
         )
         .await?;
 
-        let func_run_log_cache: Arc<LayerCache<Arc<FuncRunLog>>> = LayerCache::new(
+        let func_run_log_cache = LayerCache::new(
             func_run_log::CACHE_NAME,
             pg_pool.clone(),
             cache_config
@@ -156,7 +142,7 @@ where
         )
         .await?;
 
-        let rebase_batch_cache: Arc<LayerCache<Arc<RebaseBatchValue>>> = LayerCache::new(
+        let rebase_batch_cache = LayerCache::new(
             rebase_batch::CACHE_NAME,
             pg_pool.clone(),
             cache_config
@@ -170,7 +156,7 @@ where
         )
         .await?;
 
-        let snapshot_cache: Arc<LayerCache<Arc<WorkspaceSnapshotValue>>> = LayerCache::new(
+        let snapshot_cache = LayerCache::new(
             workspace_snapshot::CACHE_NAME,
             pg_pool.clone(),
             cache_config
@@ -248,11 +234,11 @@ where
         &self.persister_client
     }
 
-    pub fn cas(&self) -> &CasDb<CasValue> {
+    pub fn cas(&self) -> &CasDb {
         &self.cas
     }
 
-    pub fn encrypted_secret(&self) -> &EncryptedSecretDb<EncryptedSecretValue> {
+    pub fn encrypted_secret(&self) -> &EncryptedSecretDb {
         &self.encrypted_secret
     }
 
@@ -264,11 +250,11 @@ where
         &self.func_run_log
     }
 
-    pub fn rebase_batch(&self) -> &RebaseBatchDb<RebaseBatchValue> {
+    pub fn rebase_batch(&self) -> &RebaseBatchDb {
         &self.rebase_batch
     }
 
-    pub fn workspace_snapshot(&self) -> &WorkspaceSnapshotDb<WorkspaceSnapshotValue> {
+    pub fn workspace_snapshot(&self) -> &WorkspaceSnapshotDb {
         &self.workspace_snapshot
     }
 
