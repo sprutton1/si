@@ -55,6 +55,7 @@ use super::backend::{
     json::FuncBackendJson,
     map::FuncBackendMap,
     object::FuncBackendObject,
+    resource_payload_to_value::FuncBackendResourcePayloadToValue,
     string::FuncBackendString,
     validation::FuncBackendValidation,
     FuncBackend, FuncDispatch, FuncDispatchContext, InvalidResolverFunctionTypeError,
@@ -1716,6 +1717,9 @@ impl FuncRunnerExecutionTask {
             FuncBackendKind::Integer => FuncBackendInteger::create_and_execute(&self.args).await,
             FuncBackendKind::Map => FuncBackendMap::create_and_execute(&self.args).await,
             FuncBackendKind::Object => FuncBackendObject::create_and_execute(&self.args).await,
+            FuncBackendKind::ResourcePayloadToValue => {
+                FuncBackendResourcePayloadToValue::create_and_execute(&self.args).await
+            }
             FuncBackendKind::String => FuncBackendString::create_and_execute(&self.args).await,
             FuncBackendKind::Unset => Ok((None, None)),
             FuncBackendKind::Validation => {

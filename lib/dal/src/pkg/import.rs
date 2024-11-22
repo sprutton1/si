@@ -75,7 +75,7 @@ pub struct ImportOptions {
     pub past_module_hashes: Option<Vec<String>>,
 }
 
-const SPECIAL_CASE_FUNCS: [&str; 2] = ["si:resourcePayloadToValue", "si:normalizeToArray"];
+const SPECIAL_CASE_FUNCS: [&str; 1] = ["si:normalizeToArray"];
 
 #[allow(clippy::too_many_arguments)]
 async fn import_change_set(
@@ -98,8 +98,7 @@ async fn import_change_set(
         let unique_id = func_spec.unique_id().to_string();
 
         // This is a hack because the hash of the intrinsics has changed from the version in the
-        // packages. We also apply this to si:resourcePayloadToValue since it should be an
-        // intrinsic but is only in our packages
+        // packages.
         if func::is_intrinsic(func_spec.name()) || SPECIAL_CASE_FUNCS.contains(&func_spec.name()) {
             if let Some(func_id) = Func::find_id_by_name(ctx, func_spec.name()).await? {
                 let func = Func::get_by_id_or_error(ctx, func_id).await?;
@@ -1759,7 +1758,7 @@ pub async fn attach_resource_payload_to_value(
     ctx: &DalContext,
     schema_variant_id: SchemaVariantId,
 ) -> PkgResult<()> {
-    let func_id = Func::find_id_by_name(ctx, "si:resourcePayloadToValue")
+    let func_id = Func::find_intrinsic_id_by_name(ctx, "si:resourcePayloadToValue")
         .await?
         .ok_or(PkgError::FuncNotFoundByName(
             "si:resourcePayloadToValue".into(),

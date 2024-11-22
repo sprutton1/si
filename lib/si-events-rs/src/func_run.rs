@@ -79,6 +79,7 @@ pub enum FuncBackendKind {
     Unset,
     Validation,
     Management,
+    ResourcePayloadToValue,
 }
 
 // NOTE(nick,zack): do not add "remain::sorted" for postcard de/ser. We need the order to be
@@ -116,6 +117,7 @@ pub enum FuncBackendResponseType {
     Validation,
     Void,
     Management,
+    ResourcePayloadToValue,
 }
 
 #[remain::sorted]

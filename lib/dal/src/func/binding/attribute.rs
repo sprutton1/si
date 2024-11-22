@@ -894,7 +894,8 @@ async fn validate_intrinsic_inputs(
                 }
             }
         }
-        IntrinsicFunc::SetArray
+        IntrinsicFunc::ResourcePayloadToValue
+        | IntrinsicFunc::SetArray
         | IntrinsicFunc::SetBoolean
         | IntrinsicFunc::SetInteger
         | IntrinsicFunc::SetJson

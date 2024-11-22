@@ -132,31 +132,6 @@ pub(crate) async fn migrate_test_exclusive_schema_starfield(
         )
         .build()?;
 
-    let starfield_resource_payload_to_value_func_code =
-        "async function translate(arg: Input): Promise<Output> {\
-            return arg.payload ?? {};
-        }";
-    let fn_name = "test:resourcePayloadToValue";
-    let starfield_resource_payload_to_value_func = FuncSpec::builder()
-        .name(fn_name)
-        .unique_id(fn_name)
-        .data(
-            FuncSpecData::builder()
-                .name(fn_name)
-                .code_plaintext(starfield_resource_payload_to_value_func_code)
-                .handler("translate")
-                .backend_kind(FuncSpecBackendKind::JsAttribute)
-                .response_type(FuncSpecBackendResponseType::Json)
-                .build()?,
-        )
-        .argument(
-            FuncArgumentSpec::builder()
-                .name("payload")
-                .kind(FuncArgumentKind::Object)
-                .build()?,
-        )
-        .build()?;
-
     let starfield_kripke_func_code = "async function hesperus_is_phosphorus(input) {
             if input.hesperus === \"hesperus\" { return \"phosphorus\"; }
             else return \"not hesperus\";
@@ -407,7 +382,6 @@ pub(crate) async fn migrate_test_exclusive_schema_starfield(
         .func(starfield_create_action_func)
         .func(fallout_entries_to_galaxies_transform_func)
         .func(starfield_authoring_schema_func)
-        .func(starfield_resource_payload_to_value_func)
         .func(starfield_kripke_func)
         .schema(starfield_schema)
         .build()?;
@@ -590,31 +564,6 @@ pub(crate) async fn migrate_test_exclusive_schema_etoiles(
                 .handler("createAsset")
                 .backend_kind(FuncSpecBackendKind::JsSchemaVariantDefinition)
                 .response_type(FuncSpecBackendResponseType::SchemaVariantDefinition)
-                .build()?,
-        )
-        .build()?;
-
-    let etoiles_resource_payload_to_value_func_code =
-        "async function translate(arg: Input): Promise<Output> {\
-            return arg.payload ?? {};
-        }";
-    let fn_name = "test:resourcePayloadToValue";
-    let etoiles_resource_payload_to_value_func = FuncSpec::builder()
-        .name(fn_name)
-        .unique_id(fn_name)
-        .data(
-            FuncSpecData::builder()
-                .name(fn_name)
-                .code_plaintext(etoiles_resource_payload_to_value_func_code)
-                .handler("translate")
-                .backend_kind(FuncSpecBackendKind::JsAttribute)
-                .response_type(FuncSpecBackendResponseType::Json)
-                .build()?,
-        )
-        .argument(
-            FuncArgumentSpec::builder()
-                .name("payload")
-                .kind(FuncArgumentKind::Object)
                 .build()?,
         )
         .build()?;
@@ -830,7 +779,6 @@ pub(crate) async fn migrate_test_exclusive_schema_etoiles(
     let etoiles_spec = etoiles_builder
         .func(identity_func_spec)
         .func(etoiles_authoring_schema_func)
-        .func(etoiles_resource_payload_to_value_func)
         .func(etoiles_kripke_func)
         .schema(etoiles_schema)
         .build()?;
@@ -878,30 +826,6 @@ pub(crate) async fn migrate_test_exclusive_schema_private_language(
                 .handler("createAsset")
                 .backend_kind(FuncSpecBackendKind::JsSchemaVariantDefinition)
                 .response_type(FuncSpecBackendResponseType::SchemaVariantDefinition)
-                .build()?,
-        )
-        .build()?;
-
-    let private_lang_payload_to_val = "async function translate(arg: Input): Promise<Output> {\
-            return arg.payload ?? {};
-        }";
-    let fn_name = "test:resourcePayloadToValue";
-    let private_lang_payload_to_val_fn = FuncSpec::builder()
-        .name(fn_name)
-        .unique_id(fn_name)
-        .data(
-            FuncSpecData::builder()
-                .name(fn_name)
-                .code_plaintext(private_lang_payload_to_val)
-                .handler("translate")
-                .backend_kind(FuncSpecBackendKind::JsAttribute)
-                .response_type(FuncSpecBackendResponseType::Json)
-                .build()?,
-        )
-        .argument(
-            FuncArgumentSpec::builder()
-                .name("payload")
-                .kind(FuncArgumentKind::Object)
                 .build()?,
         )
         .build()?;
@@ -955,7 +879,6 @@ pub(crate) async fn migrate_test_exclusive_schema_private_language(
     let private_lang_spec = private_lang_builder
         .func(identity_func_spec)
         .func(private_lang_auth_schema)
-        .func(private_lang_payload_to_val_fn)
         .schema(private_lang_schema)
         .build()?;
 

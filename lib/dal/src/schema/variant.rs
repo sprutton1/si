@@ -1873,9 +1873,9 @@ impl SchemaVariant {
             match IntrinsicFunc::maybe_from_str(&func.name) {
                 None => filtered_funcs.push(func.to_owned()),
                 Some(intrinsic) => match intrinsic {
-                    IntrinsicFunc::Identity | IntrinsicFunc::Unset => {
-                        filtered_funcs.push(func.to_owned())
-                    }
+                    IntrinsicFunc::Identity
+                    | IntrinsicFunc::Unset
+                    | IntrinsicFunc::ResourcePayloadToValue => filtered_funcs.push(func.to_owned()),
                     IntrinsicFunc::SetArray
                     | IntrinsicFunc::SetBoolean
                     | IntrinsicFunc::SetInteger

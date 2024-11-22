@@ -78,6 +78,7 @@ pub enum FuncSpecBackendKind {
     Management,
     Map,
     Object,
+    ResourcePayloadToValue,
     String,
     Unset,
     Validation,
@@ -101,6 +102,7 @@ pub enum FuncSpecBackendResponseType {
     // NOTE(nick): this is deprecated, but keeping it for now in case something from the module
     // index needs it.
     Reconciliation,
+    ResourcePayloadToValue,
     SchemaVariantDefinition,
     String,
     Unset,

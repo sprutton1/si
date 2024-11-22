@@ -40,6 +40,7 @@ pub enum ResolverFunctionResponseType {
     Map,
     Object,
     Qualification,
+    ResourcePayloadToValue,
     String,
     #[default]
     Unset,

@@ -895,7 +895,8 @@ async fn return_the_right_bindings(ctx: &mut DalContext, nw: &WorkspaceSignup) {
                                     dal::func::intrinsics::IntrinsicFunc::Unset => {
                                         assert!(attribute_binding.argument_bindings.is_empty());
                                     }
-                                    dal::func::intrinsics::IntrinsicFunc::SetArray
+                                    dal::func::intrinsics::IntrinsicFunc::ResourcePayloadToValue
+                                    | dal::func::intrinsics::IntrinsicFunc::SetArray
                                     | dal::func::intrinsics::IntrinsicFunc::SetBoolean
                                     | dal::func::intrinsics::IntrinsicFunc::SetInteger
                                     | dal::func::intrinsics::IntrinsicFunc::SetJson
@@ -954,7 +955,8 @@ async fn return_the_right_bindings(ctx: &mut DalContext, nw: &WorkspaceSignup) {
                                         assert!(attribute_binding.argument_bindings.is_empty());
                                     }
                                     // these intrinsics only have one arg
-                                    dal::func::intrinsics::IntrinsicFunc::SetArray
+                                    dal::func::intrinsics::IntrinsicFunc::ResourcePayloadToValue
+                                    | dal::func::intrinsics::IntrinsicFunc::SetArray
                                     | dal::func::intrinsics::IntrinsicFunc::SetBoolean
                                     | dal::func::intrinsics::IntrinsicFunc::SetInteger
                                     | dal::func::intrinsics::IntrinsicFunc::SetJson

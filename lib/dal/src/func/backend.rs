@@ -28,6 +28,7 @@ pub mod json;
 pub mod management;
 pub mod map;
 pub mod object;
+pub mod resource_payload_to_value;
 pub mod string;
 pub mod validation;
 
@@ -99,6 +100,7 @@ pub enum FuncBackendKind {
     Unset,
     Validation,
     Management,
+    ResourcePayloadToValue,
 }
 
 impl From<FuncBackendKind> for si_events::FuncBackendKind {
@@ -120,6 +122,9 @@ impl From<FuncBackendKind> for si_events::FuncBackendKind {
             FuncBackendKind::JsValidation => si_events::FuncBackendKind::JsValidation,
             FuncBackendKind::Map => si_events::FuncBackendKind::Map,
             FuncBackendKind::Object => si_events::FuncBackendKind::Object,
+            FuncBackendKind::ResourcePayloadToValue => {
+                si_events::FuncBackendKind::ResourcePayloadToValue
+            }
             FuncBackendKind::String => si_events::FuncBackendKind::String,
             FuncBackendKind::Unset => si_events::FuncBackendKind::Unset,
             FuncBackendKind::Validation => si_events::FuncBackendKind::Validation,
@@ -147,6 +152,9 @@ impl From<si_events::FuncBackendKind> for FuncBackendKind {
             si_events::FuncBackendKind::JsValidation => FuncBackendKind::JsValidation,
             si_events::FuncBackendKind::Map => FuncBackendKind::Map,
             si_events::FuncBackendKind::Object => FuncBackendKind::Object,
+            si_events::FuncBackendKind::ResourcePayloadToValue => {
+                FuncBackendKind::ResourcePayloadToValue
+            }
             si_events::FuncBackendKind::String => FuncBackendKind::String,
             si_events::FuncBackendKind::Unset => FuncBackendKind::Unset,
             si_events::FuncBackendKind::Validation => FuncBackendKind::Validation,
@@ -184,6 +192,7 @@ pub enum FuncBackendResponseType {
     Qualification,
     // NOTE(nick): this has been deprecated. Not adding serde deprecated tag in case it affects the type.
     Reconciliation,
+    ResourcePayloadToValue,
     SchemaVariantDefinition,
     String,
     Unset,
@@ -211,6 +220,9 @@ impl From<FuncBackendResponseType> for si_events::FuncBackendResponseType {
             }
             FuncBackendResponseType::Reconciliation => {
                 si_events::FuncBackendResponseType::Reconciliation
+            }
+            FuncBackendResponseType::ResourcePayloadToValue => {
+                si_events::FuncBackendResponseType::ResourcePayloadToValue
             }
             FuncBackendResponseType::SchemaVariantDefinition => {
                 si_events::FuncBackendResponseType::SchemaVariantDefinition
@@ -244,6 +256,9 @@ impl From<si_events::FuncBackendResponseType> for FuncBackendResponseType {
             si_events::FuncBackendResponseType::Reconciliation => {
                 FuncBackendResponseType::Reconciliation
             }
+            si_events::FuncBackendResponseType::ResourcePayloadToValue => {
+                FuncBackendResponseType::ResourcePayloadToValue
+            }
             si_events::FuncBackendResponseType::SchemaVariantDefinition => {
                 FuncBackendResponseType::SchemaVariantDefinition
             }
@@ -268,6 +283,9 @@ impl From<ResolverFunctionResponseType> for FuncBackendResponseType {
             ResolverFunctionResponseType::Object => FuncBackendResponseType::Object,
             ResolverFunctionResponseType::Qualification => FuncBackendResponseType::Qualification,
             ResolverFunctionResponseType::CodeGeneration => FuncBackendResponseType::CodeGeneration,
+            ResolverFunctionResponseType::ResourcePayloadToValue => {
+                FuncBackendResponseType::ResourcePayloadToValue
+            }
             ResolverFunctionResponseType::String => FuncBackendResponseType::String,
             ResolverFunctionResponseType::Unset => FuncBackendResponseType::Unset,
             ResolverFunctionResponseType::Json => FuncBackendResponseType::Json,
@@ -303,6 +321,9 @@ impl TryFrom<FuncBackendResponseType> for ResolverFunctionResponseType {
             }
             FuncBackendResponseType::Reconciliation => {
                 return Err(InvalidResolverFunctionTypeError(value));
+            }
+            FuncBackendResponseType::ResourcePayloadToValue => {
+                ResolverFunctionResponseType::ResourcePayloadToValue
             }
             FuncBackendResponseType::SchemaVariantDefinition => {
                 return Err(InvalidResolverFunctionTypeError(value));

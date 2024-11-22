@@ -376,6 +376,32 @@ impl Func {
         Ok(None)
     }
 
+    pub async fn find_intrinsic_id_by_name(
+        ctx: &DalContext,
+        name: impl AsRef<str>,
+    ) -> FuncResult<Option<FuncId>> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        let func_category_id = workspace_snapshot
+            .get_category_node_or_err(None, CategoryNodeKind::Func)
+            .await?;
+        let func_indices = workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind(
+                func_category_id,
+                EdgeWeightKind::new_use().into(),
+            )
+            .await?;
+        let name = name.as_ref();
+        for func_index in func_indices {
+            let node_weight = workspace_snapshot.get_node_weight(func_index).await?;
+            if let NodeWeight::Func(inner_weight) = node_weight {
+                if inner_weight.name() == name && inner_weight.func_kind() == FuncKind::Intrinsic {
+                    return Ok(Some(inner_weight.id().into()));
+                }
+            }
+        }
+        Ok(None)
+    }
+
     pub fn code_plaintext(&self) -> FuncResult<Option<String>> {
         Ok(match &self.code_base64 {
             Some(base64_code) => Some(String::from_utf8(
@@ -408,7 +434,9 @@ impl Func {
                 | IntrinsicFunc::SetObject
                 | IntrinsicFunc::SetString
                 | IntrinsicFunc::Unset => false,
-                IntrinsicFunc::Identity | IntrinsicFunc::Validation => true,
+                IntrinsicFunc::Identity
+                | IntrinsicFunc::ResourcePayloadToValue
+                | IntrinsicFunc::Validation => true,
             },
             None => true,
         }
@@ -552,7 +580,7 @@ impl Func {
 
     pub async fn find_intrinsic(ctx: &DalContext, intrinsic: IntrinsicFunc) -> FuncResult<FuncId> {
         let name = intrinsic.name();
-        Self::find_id_by_name(ctx, name)
+        Self::find_intrinsic_id_by_name(ctx, name)
             .await?
             .ok_or(FuncError::IntrinsicFuncNotFound(name.to_owned()))
     }

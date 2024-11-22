@@ -12,6 +12,7 @@ use crate::PropKind;
 #[derive(AsRefStr, Display, EnumIter, EnumString, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum IntrinsicFunc {
     Identity,
+    ResourcePayloadToValue,
     SetArray,
     SetBoolean,
     SetInteger,
@@ -63,6 +64,18 @@ impl IntrinsicFunc {
                     FuncArgumentSpec::builder()
                         .name("identity")
                         .kind(FuncArgumentKind::Any)
+                        .build()
+                        .map_err(|e| FuncError::IntrinsicSpecCreation(e.to_string()))?,
+                );
+            }
+            Self::ResourcePayloadToValue => {
+                builder.unique_id("123");
+                data_builder.backend_kind(FuncSpecBackendKind::ResourcePayloadToValue);
+                data_builder.response_type(FuncSpecBackendResponseType::ResourcePayloadToValue);
+                builder.argument(
+                    FuncArgumentSpec::builder()
+                        .name("payload")
+                        .kind(FuncArgumentKind::Object)
                         .build()
                         .map_err(|e| FuncError::IntrinsicSpecCreation(e.to_string()))?,
                 );
@@ -194,6 +207,7 @@ impl IntrinsicFunc {
     pub fn name(&self) -> &str {
         match self {
             Self::Identity => "si:identity",
+            Self::ResourcePayloadToValue => "si:resourcePayloadToValue",
             Self::SetArray => "si:setArray",
             Self::SetBoolean => "si:setBoolean",
             Self::SetInteger => "si:setInteger",
@@ -209,6 +223,7 @@ impl IntrinsicFunc {
     pub fn maybe_from_str(s: impl AsRef<str>) -> Option<Self> {
         Some(match s.as_ref() {
             "si:identity" => Self::Identity,
+            "si:resourcePayloadToValue" => Self::ResourcePayloadToValue,
             "si:setArray" => Self::SetArray,
             "si:setBoolean" => Self::SetBoolean,
             "si:setInteger" => Self::SetInteger,

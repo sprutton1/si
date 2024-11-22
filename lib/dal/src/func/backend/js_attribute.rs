@@ -63,6 +63,7 @@ impl FuncDispatch for FuncBackendJsAttribute {
                 | ResolverFunctionResponseType::Identity
                 | ResolverFunctionResponseType::Map
                 | ResolverFunctionResponseType::Object
+                | ResolverFunctionResponseType::ResourcePayloadToValue
                 | ResolverFunctionResponseType::String
                 | ResolverFunctionResponseType::Unset
                 | ResolverFunctionResponseType::Void
