@@ -3,8 +3,8 @@ use strum::{Display, EnumDiscriminants};
 
 use crate::{
     ActionKind, ActionPrototypeId, Actor, AttributeValueId, ChangeSetId, ChangeSetStatus,
-    ComponentId, FuncId, InputSocketId, OutputSocketId, PropId, SchemaId, SchemaVariantId,
-    SecretId, WorkspacePk,
+    ComponentId, FuncArgumentId, FuncId, FuncKind, FuncRunId, InputSocketId, OutputSocketId,
+    PropId, SchemaId, SchemaVariantId, SecretId, ViewId, WorkspacePk,
 };
 
 type MetadataDiscrim = AuditLogMetadataV1Discriminants;
@@ -37,12 +37,69 @@ pub enum AuditLogKindV1 {
     ApproveChangeSetApply {
         from_status: ChangeSetStatus,
     },
+    AttachActionFunc {
+        func_id: FuncId,
+        func_display_name: Option<String>,
+        func_name: String,
+        schema_variant_id: Option<SchemaVariantId>,
+        component_id: Option<ComponentId>,
+        action_kind: Option<ActionKind>,
+    },
+    AttachAttributeFunc {
+        func_id: FuncId,
+        func_display_name: Option<String>,
+        func_name: String,
+        schema_variant_id: Option<SchemaVariantId>,
+        component_id: Option<ComponentId>,
+        subject_name: String,
+        prop_id: Option<PropId>,
+        prop_name: String,
+        output_socket_id: Option<OutputSocketId>,
+        output_socket_name: String,
+    },
+    AttachAuthFunc {
+        func_id: FuncId,
+        func_display_name: Option<String>,
+        func_name: String,
+        schema_variant_id: Option<SchemaVariantId>,
+    },
+    AttachCodeGenFunc {
+        func_id: FuncId,
+        func_display_name: Option<String>,
+        func_name: String,
+        schema_variant_id: Option<SchemaVariantId>,
+        component_id: Option<ComponentId>,
+        subject_name: String,
+    },
+    AttachManagementFunc {
+        func_id: FuncId,
+        func_display_name: Option<String>,
+        func_name: String,
+        schema_variant_id: Option<SchemaVariantId>,
+        component_id: Option<ComponentId>,
+        subject_name: String,
+    },
+    AttachQualificationFunc {
+        func_id: FuncId,
+        func_display_name: Option<String>,
+        func_name: String,
+        schema_variant_id: Option<SchemaVariantId>,
+        component_id: Option<ComponentId>,
+        subject_name: String,
+    },
     CancelAction {
         prototype_id: ActionPrototypeId,
         action_kind: ActionKind,
         func_id: FuncId,
         func_display_name: Option<String>,
         func_name: String,
+    },
+    ContributeModule {
+        name: String,
+        version: String,
+        schema_id: SchemaId,
+        schema_variant_id: SchemaVariantId,
+        schema_variant_version: String,
     },
     CreateChangeSet,
     CreateComponent {
@@ -51,9 +108,39 @@ pub enum AuditLogKindV1 {
         schema_variant_id: SchemaVariantId,
         schema_variant_name: String,
     },
+    CreateConnection {
+        from_component_id: ComponentId,
+        from_component_name: String,
+        from_socket_id: OutputSocketId,
+        from_socket_name: String,
+        to_component_id: ComponentId,
+        to_component_name: String,
+        to_socket_id: InputSocketId,
+        to_socket_name: String,
+    },
+    CreateFunc {
+        func_display_name: Option<String>,
+        func_name: String,
+        func_kind: FuncKind,
+    },
+    CreateFuncArgument {
+        func_id: FuncId,
+        func_display_name: Option<String>,
+        func_name: String,
+        name: String,
+        // strings for now I suppose
+        kind: String,
+        element_kind: Option<String>,
+    },
+    CreateSchemaVariant {
+        name: String,
+    },
     CreateSecret {
         name: String,
         secret_id: SecretId,
+    },
+    CreateView {
+        name: String,
     },
     DeleteComponent {
         name: String,
@@ -61,9 +148,53 @@ pub enum AuditLogKindV1 {
         schema_variant_id: SchemaVariantId,
         schema_variant_name: String,
     },
+    DeleteConnection {
+        from_component_id: ComponentId,
+        from_component_name: String,
+        from_socket_id: OutputSocketId,
+        from_socket_name: String,
+        to_component_id: ComponentId,
+        to_component_name: String,
+        to_socket_id: InputSocketId,
+        to_socket_name: String,
+    },
+    DeleteFunc {
+        func_id: FuncId,
+        func_display_name: Option<String>,
+        func_name: String,
+    },
+    DeleteFuncArgument {
+        func_id: FuncId,
+        func_display_name: Option<String>,
+        func_name: String,
+        func_argument_id: FuncArgumentId,
+        name: String,
+    },
+    DeleteSchemaVariant {
+        schema_variant_id: SchemaVariantId,
+        name: String,
+        schema_id: SchemaId,
+    },
     DeleteSecret {
         name: String,
         secret_id: SecretId,
+    },
+    DeleteView {
+        view_id: ViewId,
+        view_name: String,
+    },
+    DetachFunc {
+        func_id: FuncId,
+        func_display_name: Option<String>,
+        func_name: String,
+        schema_variant_id: Option<SchemaVariantId>,
+        component_id: Option<ComponentId>,
+        subject_name: String,
+    },
+    ExecuteFunc {
+        func_id: FuncId,
+        func_display_name: Option<String>,
+        func_name: String,
     },
     ExportWorkspace {
         id: WorkspacePk,
@@ -76,12 +207,23 @@ pub enum AuditLogKindV1 {
         version: String,
     },
     Login,
+    OrphanComponent {
+        component_id: ComponentId,
+        component_name: String,
+        previous_parent_id: ComponentId,
+        previous_parent_name: String,
+    },
+
     PutActionOnHold {
         prototype_id: ActionPrototypeId,
         action_kind: ActionKind,
         func_id: FuncId,
         func_display_name: Option<String>,
         func_name: String,
+    },
+    RegenerateSchemaVariant {
+        schema_variant_id: SchemaVariantId,
+        schema_variant_display_name: String,
     },
     RejectChangeSetApply {
         from_status: ChangeSetStatus,
@@ -107,6 +249,32 @@ pub enum AuditLogKindV1 {
         func_display_name: Option<String>,
         func_name: String,
         run_status: bool,
+    },
+    TestFunction {
+        func_id: FuncId,
+        func_display_name: Option<String>,
+        func_name: String,
+        func_run_id: FuncRunId,
+    },
+    UnlockFunc {
+        func_id: FuncId,
+        func_display_name: Option<String>,
+        func_name: String,
+        schema_variant_id: Option<SchemaVariantId>,
+        component_id: Option<ComponentId>,
+        subject_name: String,
+    },
+    UnlockSchemaVariant {
+        schema_variant_id: SchemaVariantId,
+        schema_variant_display_name: String,
+    },
+    UpdateComponentParent {
+        component_id: ComponentId,
+        component_name: String,
+        old_parent_id: Option<ComponentId>,
+        old_parent_name: Option<String>,
+        new_parent_id: ComponentId,
+        new_parent_name: String,
     },
     UpdateDependentInputSocket {
         input_socket_id: InputSocketId,
@@ -153,6 +321,13 @@ pub enum AuditLogKindV1 {
         before_value: Option<serde_json::Value>,
         after_value: Option<serde_json::Value>,
     },
+    UpdateFuncMetadata {
+        func_id: FuncId,
+        old_display_name: String,
+        new_display_name: String,
+        old_description: String,
+        new_description: String,
+    },
     UpdatePropertyEditorValue {
         component_id: ComponentId,
         component_name: String,
@@ -177,9 +352,29 @@ pub enum AuditLogKindV1 {
         after_secret_name: Option<String>,
         after_secret_id: Option<SecretId>,
     },
+    UpdateSchemaVariant {
+        old_display_name: String,
+        new_display_name: String,
+        old_description: String,
+        new_description: String,
+        old_category: String,
+        new_category: String,
+        old_link: String,
+        new_link: String,
+        old_color: String,
+        new_color: String,
+        old_component_type: String,
+        new_component_type: String,
+        //todo: what to do about the code?
+    },
     UpdateSecret {
         name: String,
         secret_id: SecretId,
+    },
+    UpdateView {
+        view_id: ViewId,
+        old_name: String,
+        new_name: String,
     },
     UpgradeComponent {
         name: String,
