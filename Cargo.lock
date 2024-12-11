@@ -4192,6 +4192,7 @@ dependencies = [
  "derive_builder",
  "futures",
  "hyper 1.5.1",
+ "hyper-util",
  "jwt-simple",
  "module-index-types",
  "refinery",

@@ -4,7 +4,6 @@ use super::routes;
 
 use axum::routing::IntoMakeService;
 use axum::Router;
-use hyper::server::{accept::Accept, conn::AddrIncoming};
 use s3::creds::{error::CredentialsError, Credentials as AwsCredentials};
 use sea_orm::{ConnectOptions, Database, DatabaseConnection, DbErr};
 use si_data_pg::{PgPool, PgPoolConfig, PgPoolError};
