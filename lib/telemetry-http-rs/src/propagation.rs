@@ -1,6 +1,6 @@
 //! Telemetry propagation via HTTP headers.
 
-use http::HeaderMap;
+use hyper::HeaderMap;
 use telemetry::{
     opentelemetry::{global, trace::TraceContextExt, Context},
     tracing::Span,
@@ -58,23 +58,25 @@ pub fn inject_opentelemetry_context(ctx: &Context, headers: &mut HeaderMap) {
 // Implementation vendored from `opentelemetry-http` crate, released under the Apache 2.0 license
 //
 // https://github.com/open-telemetry/opentelemetry-rust/blob/47881b20a2b8e94d8e1cdbd4877852dd74cc07de/opentelemetry-http/src/lib.rs#L13-L41
+//
+// EDIT(nick): this was edited to move from "http" to "hyper" as part of the migration to hyper v1.
 mod headers {
     use telemetry::opentelemetry::propagation::{Extractor, Injector};
 
-    pub struct HeaderInjector<'a>(pub &'a mut http::HeaderMap);
+    pub struct HeaderInjector<'a>(pub &'a mut hyper::HeaderMap);
 
     impl<'a> Injector for HeaderInjector<'a> {
         /// Set a key and value in the HeaderMap.  Does nothing if the key or value are not valid inputs.
         fn set(&mut self, key: &str, value: String) {
-            if let Ok(name) = http::header::HeaderName::from_bytes(key.as_bytes()) {
-                if let Ok(val) = http::header::HeaderValue::from_str(&value) {
+            if let Ok(name) = hyper::header::HeaderName::from_bytes(key.as_bytes()) {
+                if let Ok(val) = hyper::header::HeaderValue::from_str(&value) {
                     self.0.insert(name, val);
                 }
             }
         }
     }
 
-    pub struct HeaderExtractor<'a>(pub &'a http::HeaderMap);
+    pub struct HeaderExtractor<'a>(pub &'a hyper::HeaderMap);
 
     impl<'a> Extractor for HeaderExtractor<'a> {
         /// Get a value for a key from the HeaderMap.  If the value is not valid ASCII, returns None.

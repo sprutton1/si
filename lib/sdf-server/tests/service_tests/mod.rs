@@ -1,5 +1,6 @@
 use axum::{
     body::Body,
+    body::HttpBody,
     http::{self, Method, Request, StatusCode},
     Router,
 };
@@ -28,7 +29,11 @@ pub async fn api_request_auth_empty<Res: DeserializeOwned>(
         .expect("cannot create api request");
     let response = app.oneshot(api_request).await.expect("cannot send request");
     let status = response.status();
-    let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
+    let body = response
+        .collect()
+        .await
+        .expect("cannot collect body")
+        .to_bytes();
     let body_json: serde_json::Value =
         serde_json::from_slice(&body).expect("response is not valid json");
     if status != StatusCode::OK {
@@ -61,9 +66,11 @@ pub async fn api_request_auth_no_response<Req: Serialize>(
         .expect("cannot create api request");
     let response = app.oneshot(api_request).await.expect("cannot send request");
     let status = response.status();
-    let body = hyper::body::to_bytes(response.into_body())
+    let body = response
+        .collect()
         .await
-        .expect("cannot read body");
+        .expect("cannot collect body")
+        .to_bytes();
     if status != StatusCode::OK {
         dbg!(&body);
         assert_eq!(

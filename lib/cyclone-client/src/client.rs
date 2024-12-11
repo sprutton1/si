@@ -18,7 +18,7 @@ use http::{
     uri::{Authority, InvalidUri, InvalidUriParts, PathAndQuery, Scheme},
 };
 use hyper::{
-    body,
+    body::HttpBody,
     client::{connect::Connection, HttpConnector, ResponseFuture},
     service::Service,
     Body, Method, Request, Response, StatusCode, Uri,
@@ -43,6 +43,8 @@ use crate::{new_unstarted_execution, ping, watch, Execution, PingExecution, Watc
 pub enum ClientError {
     #[error("cannot create client uri")]
     ClientUri(#[source] http::Error),
+    #[error("failed collecting body from response")]
+    CollectResponseBody(#[source] hyper::Error),
     #[error("failed to connect")]
     Connect(#[source] Box<dyn std::error::Error + Send + Sync>),
     #[error("failed to connect to the Firecracker VM")]
@@ -63,8 +65,6 @@ pub enum ClientError {
     MissingWebsocketScheme,
     #[error("no socket addrs where resolved")]
     NoSocketAddrResolved,
-    #[error("failed reading http response body")]
-    ReadResponseBody(#[source] hyper::Error),
     #[error("failed to create an http request")]
     Request(#[source] hyper::http::Error),
     #[error("failed to create request uri")]
@@ -227,9 +227,11 @@ where
         if response.status() != StatusCode::OK {
             return Err(ClientError::UnexpectedStatusCode(response.status()));
         }
-        let body = body::to_bytes(response)
+        let body = response
+            .collect()
             .await
-            .map_err(ClientError::ReadResponseBody)?;
+            .map_err(ClientError::CollectResponseBody)?
+            .to_bytes();
         let result = LivenessStatus::from_str(str::from_utf8(body.as_ref())?)?;
 
         Ok(result)
@@ -241,9 +243,11 @@ where
         if response.status() != StatusCode::OK {
             return Err(ClientError::UnexpectedStatusCode(response.status()));
         }
-        let body = body::to_bytes(response)
+        let body = response
+            .collect()
             .await
-            .map_err(ClientError::ReadResponseBody)?;
+            .map_err(ClientError::CollectResponseBody)?
+            .to_bytes();
         let result = ReadinessStatus::from_str(str::from_utf8(body.as_ref())?)?;
 
         Ok(result)

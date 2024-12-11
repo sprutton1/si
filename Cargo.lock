@@ -1763,7 +1763,7 @@ dependencies = [
  "futures",
  "futures-lite",
  "http 0.2.12",
- "hyper 0.14.31",
+ "hyper 1.5.1",
  "hyperlocal",
  "remain",
  "serde",
@@ -1810,7 +1810,7 @@ dependencies = [
  "cyclone-core",
  "derive_builder",
  "futures",
- "hyper 0.14.31",
+ "hyper 1.5.1",
  "nix 0.26.4",
  "pin-project-lite",
  "procfs",
@@ -3278,12 +3278,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "http-range-header"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "add0ab9360ddbd88cfeb3bd9574a1d85cfdfa14db10b3e21d3700dbc4328758f"
-
-[[package]]
 name = "httparse"
 version = "1.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4197,7 +4191,7 @@ dependencies = [
  "chrono",
  "derive_builder",
  "futures",
- "hyper 0.14.31",
+ "hyper 1.5.1",
  "jwt-simple",
  "module-index-types",
  "refinery",
@@ -6071,7 +6065,7 @@ dependencies = [
  "derive_more",
  "futures",
  "futures-lite",
- "hyper 0.14.31",
+ "hyper 1.5.1",
  "module-index-client",
  "names",
  "nats-multiplexer",
@@ -7372,7 +7366,7 @@ version = "0.1.0"
 dependencies = [
  "axum 0.6.20",
  "http 0.2.12",
- "hyper 0.14.31",
+ "hyper 1.5.1",
  "remain",
  "telemetry",
  "tower-http",
@@ -7849,18 +7843,16 @@ dependencies = [
 
 [[package]]
 name = "tower-http"
-version = "0.4.4"
+version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "61c5bb1d698276a2443e5ecfabc1008bf15a36c12e6a7176e7bf089ea9131140"
+checksum = "403fa3b783d4b626a8ad51d766ab03cb6d2dbfc46b1c5d4448395e6628dc9697"
 dependencies = [
  "async-compression",
  "bitflags 2.6.0",
  "bytes",
  "futures-core",
- "futures-util",
- "http 0.2.12",
- "http-body 0.4.6",
- "http-range-header",
+ "http 1.2.0",
+ "http-body 1.0.1",
  "pin-project-lite",
  "tokio",
  "tokio-util",
