@@ -1,12 +1,12 @@
 use std::{sync::Arc, time::Instant};
 
-use serde::{de::DeserializeOwned, Serialize};
 use si_events::{rebase_batch_address::RebaseBatchAddress, Actor, Tenancy, WebEvent};
 use telemetry::prelude::*;
 
 use crate::{
     error::LayerDbResult,
     event::{LayeredEvent, LayeredEventKind},
+    hybrid_cache::CacheItem,
     layer_cache::LayerCache,
     persister::{PersisterClient, PersisterStatusReader},
 };
@@ -18,19 +18,13 @@ pub const CACHE_NAME: &str = "rebase_batches";
 pub const PARTITION_KEY: &str = "rebase_batches";
 
 #[derive(Debug, Clone)]
-pub struct RebaseBatchDb<V>
-where
-    V: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-{
-    pub cache: Arc<LayerCache<Arc<V>>>,
+pub struct RebaseBatchDb {
+    pub cache: Arc<LayerCache>,
     persister_client: PersisterClient,
 }
 
-impl<V> RebaseBatchDb<V>
-where
-    V: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-{
-    pub fn new(cache: Arc<LayerCache<Arc<V>>>, persister_client: PersisterClient) -> Self {
+impl RebaseBatchDb {
+    pub fn new(cache: Arc<LayerCache>, persister_client: PersisterClient) -> Self {
         Self {
             cache,
             persister_client,
@@ -39,7 +33,7 @@ where
 
     pub fn write(
         &self,
-        value: Arc<V>,
+        value: CacheItem,
         web_events: Option<Vec<WebEvent>>,
         tenancy: Tenancy,
         actor: Actor,
@@ -75,7 +69,7 @@ where
             si.rebase_batch.address = %key,
         )
     )]
-    pub async fn read(&self, key: &RebaseBatchAddress) -> LayerDbResult<Option<Arc<V>>> {
+    pub async fn read(&self, key: &RebaseBatchAddress) -> LayerDbResult<Option<CacheItem>> {
         self.cache.get(key.to_string().into()).await
     }
 
@@ -93,7 +87,7 @@ where
     pub async fn read_wait_for_memory(
         &self,
         key: &RebaseBatchAddress,
-    ) -> LayerDbResult<Option<Arc<V>>> {
+    ) -> LayerDbResult<Option<CacheItem>> {
         let span = current_span_for_instrument_at!("debug");
 
         let key: Arc<str> = key.to_string().into();

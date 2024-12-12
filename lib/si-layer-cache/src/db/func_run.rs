@@ -8,6 +8,7 @@ use si_events::{
 use telemetry::prelude::*;
 
 use crate::event::LayeredEventPayload;
+use crate::hybrid_cache::{CacheItem, CacheItemSpec};
 use crate::pg::PgLayer;
 use crate::LayerDbError;
 use crate::{
@@ -23,9 +24,12 @@ pub const DBNAME: &str = "func_runs";
 pub const CACHE_NAME: &str = DBNAME;
 pub const PARTITION_KEY: &str = "workspace_id";
 
+#[typetag::serde]
+impl CacheItemSpec for FuncRun {}
+
 #[derive(Debug, Clone)]
 pub struct FuncRunDb {
-    pub cache: Arc<LayerCache<Arc<FuncRun>>>,
+    pub cache: Arc<LayerCache>,
     persister_client: PersisterClient,
     ready_many_for_workspace_id_query: String,
     get_last_qualification_for_attribute_value_id: String,
@@ -36,7 +40,7 @@ pub struct FuncRunDb {
 }
 
 impl FuncRunDb {
-    pub fn new(cache: Arc<LayerCache<Arc<FuncRun>>>, persister_client: PersisterClient) -> Self {
+    pub fn new(cache: Arc<LayerCache>, persister_client: PersisterClient) -> Self {
         Self {
             cache,
             persister_client,
@@ -225,7 +229,7 @@ impl FuncRunDb {
         let sort_key: Arc<str> = value.tenancy().workspace_pk.to_string().into();
 
         self.cache
-            .insert_or_update(cache_key.clone(), value.clone(), size_hint);
+            .insert_or_update(cache_key.clone(), value, size_hint);
 
         let event = LayeredEvent::new(
             LayeredEventKind::FuncRunWrite,
@@ -251,13 +255,12 @@ impl FuncRunDb {
         tenancy: Tenancy,
         actor: Actor,
     ) -> LayerDbResult<()> {
-        let func_run_old = self.try_read(func_run_id).await?;
-        let mut func_run_new = Arc::unwrap_or_clone(func_run_old);
+        let mut func_run_new = Arc::unwrap_or_clone(self.try_read(func_run_id).await?);
         func_run_new.set_result_unprocessed_value_cas_address(unprocessed_value_cas);
         func_run_new.set_result_value_cas_address(value_cas);
         func_run_new.set_state_to_success();
 
-        self.write(Arc::new(func_run_new), None, tenancy, actor)
+        self.write(func_run_new.into(), None, tenancy, actor)
             .await?;
 
         Ok(())
@@ -358,15 +361,17 @@ impl FuncRunDb {
         Ok(())
     }
 
-    pub async fn read(&self, key: FuncRunId) -> LayerDbResult<Option<Arc<FuncRun>>> {
+    pub async fn read(&self, key: FuncRunId) -> LayerDbResult<Option<CacheItem>> {
         self.cache.get(key.to_string().into()).await
     }
 
     pub async fn try_read(&self, key: FuncRunId) -> LayerDbResult<Arc<FuncRun>> {
-        self.cache
+        let item = self
+            .cache
             .get(key.to_string().into())
             .await?
-            .ok_or_else(|| LayerDbError::MissingFuncRun(key))
+            .ok_or_else(|| LayerDbError::MissingFuncRun(key))?;
+        Ok(item.downcast_arc::<FuncRun>().unwrap())
     }
 
     // NOTE(nick): this is just to test that things are working. We probably want some customization

@@ -1,7 +1,5 @@
 mod rebase;
 
-use std::sync::Arc;
-
 use futures::StreamExt;
 use si_events::{Actor, ChangeSetId, Tenancy, WorkspacePk};
 use si_layer_cache::{
@@ -12,7 +10,7 @@ use tokio_util::sync::CancellationToken;
 
 use crate::integration_test::{setup_compute_executor, setup_nats_client, setup_pg_db};
 
-type TestLayerDb = LayerDb<Arc<String>, Arc<String>, String, String>;
+type TestLayerDb = LayerDb;
 
 #[tokio::test]
 async fn activities() {

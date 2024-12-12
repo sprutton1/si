@@ -1,7 +1,4 @@
-use std::sync::{
-    atomic::{AtomicI32, Ordering},
-    Arc,
-};
+use std::sync::atomic::{AtomicI32, Ordering};
 
 use si_events::{
     rebase_batch_address::RebaseBatchAddress, Actor, ChangeSetId, Tenancy, WorkspacePk,
@@ -14,7 +11,7 @@ use ulid::Ulid;
 
 use crate::integration_test::{setup_compute_executor, setup_nats_client, setup_pg_db};
 
-type TestLayerDb = LayerDb<Arc<String>, Arc<String>, String, String>;
+type TestLayerDb = LayerDb;
 
 #[tokio::test]
 async fn subscribe_rebaser_requests_work_queue() {

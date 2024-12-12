@@ -8,7 +8,7 @@ use tokio_util::task::TaskTracker;
 
 use si_layer_cache::layer_cache::LayerCache;
 
-async fn make_layer_cache(db_name: &str) -> Arc<LayerCache<String>> {
+async fn make_layer_cache(db_name: &str) -> Arc<LayerCache> {
     let layer_cache = LayerCache::new(
         "cas",
         super::setup_pg_db(db_name).await,
@@ -30,7 +30,7 @@ async fn empty_insert_and_get() {
 
     let value = "slave to the grind";
     let size_hint = value.len();
-    layer_cache.insert("skid row".into(), value.into(), size_hint);
+    layer_cache.insert("skid row".into(), Arc::new(value), size_hint);
 
     let skid_row: Arc<str> = "skid row".into();
 

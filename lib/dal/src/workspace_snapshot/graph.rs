@@ -7,8 +7,8 @@ use petgraph::prelude::*;
 pub use petgraph::{graph::NodeIndex, Direction};
 use serde::{Deserialize, Serialize};
 use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid};
-use si_layer_cache::db::serialize;
 use si_layer_cache::LayerDbError;
+use si_layer_cache::{db::serialize, hybrid_cache::CacheItemSpec};
 use strum::{EnumDiscriminants, EnumIter, EnumString, IntoEnumIterator};
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -154,6 +154,9 @@ impl WorkspaceSnapshotGraph {
             .expect("Unable to get last element of an iterator guaranteed to have elements")
     }
 }
+
+#[typetag::serde]
+impl CacheItemSpec for RebaseBatch {}
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct RebaseBatch {

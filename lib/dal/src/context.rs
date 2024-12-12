@@ -50,7 +50,7 @@ use crate::{
     WorkspaceSnapshot,
 };
 
-pub type DalLayerDb = LayerDb<ContentTypes, EncryptedSecret, WorkspaceSnapshotGraph, RebaseBatch>;
+pub type DalLayerDb = LayerDb;
 
 /// A context type which contains handles to common core service dependencies.
 ///

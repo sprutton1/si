@@ -1,16 +1,20 @@
+use downcast_rs::impl_downcast;
+use downcast_rs::DowncastSync;
 use foyer::opentelemetry_0_26::OpenTelemetryMetricsRegistry;
 use foyer::{
     DirectFsDeviceOptions, Engine, FifoPicker, HybridCache, HybridCacheBuilder, LargeEngineOptions,
     RateLimitPicker, RecoverMode,
 };
+use std::any::Any;
 use std::cmp::max;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, LazyLock};
 use telemetry::opentelemetry::global;
 use telemetry::tracing::{error, info};
 use tokio::fs;
+use typetag;
 
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 use crate::db::serialize;
 use crate::error::LayerDbResult;
@@ -33,26 +37,36 @@ static TOTAL_SYSTEM_MEMORY_BYTES: LazyLock<u64> = LazyLock::new(|| {
 });
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-enum MaybeDeserialized<V>
-where
-    V: Serialize + Clone + Send + Sync + 'static,
-{
+enum MaybeDeserialized {
     RawBytes(Vec<u8>),
-    DeserializedValue { value: V, size_hint: usize },
+    DeserializedValue { value: CacheItem, size_hint: usize },
 }
 
 #[derive(Clone, Debug)]
-pub struct Cache<V>
-where
-    V: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-{
-    cache: HybridCache<Arc<str>, MaybeDeserialized<V>>,
+pub struct Cache {
+    cache: HybridCache<Arc<str>, MaybeDeserialized>,
 }
 
-impl<V> Cache<V>
-where
-    V: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-{
+#[typetag::serde]
+pub trait CacheItemSpec: DowncastSync + Any + Send + Sync + 'static + std::fmt::Debug {}
+impl_downcast!(sync CacheItemSpec);
+#[typetag::serde]
+impl CacheItemSpec for String {}
+
+pub type CacheItem = Arc<dyn CacheItemSpec>;
+impl PartialEq for dyn CacheItemSpec {
+    fn eq(&self, other: &Self) -> bool {
+        // Custom equality logic based on the concrete type
+        if let Some(self_str) = self.downcast_ref::<String>() {
+            if let Some(other_str) = other.downcast_ref::<String>() {
+                return self_str == other_str;
+            }
+        }
+        false
+    }
+}
+
+impl Cache {
     pub async fn new(config: CacheConfig) -> LayerDbResult<Self> {
         let total_memory_bytes = *TOTAL_SYSTEM_MEMORY_BYTES;
 
@@ -103,16 +117,14 @@ where
 
         let cache_name: &'static str = config.name.leak();
 
-        let cache: HybridCache<Arc<str>, MaybeDeserialized<V>> = HybridCacheBuilder::new()
+        let cache: HybridCache<Arc<str>, MaybeDeserialized> = HybridCacheBuilder::new()
             .with_name(cache_name)
             .with_metrics_registry(OpenTelemetryMetricsRegistry::new(global::meter(cache_name)))
             .memory(memory_cache_capacity_bytes)
-            .with_weighter(
-                |_key: &Arc<str>, value: &MaybeDeserialized<V>| match value {
-                    MaybeDeserialized::RawBytes(bytes) => bytes.len(),
-                    MaybeDeserialized::DeserializedValue { size_hint, .. } => *size_hint,
-                },
-            )
+            .with_weighter(|_key: &Arc<str>, value: &MaybeDeserialized| match value {
+                MaybeDeserialized::RawBytes(bytes) => bytes.len(),
+                MaybeDeserialized::DeserializedValue { size_hint, .. } => *size_hint,
+            })
             .storage(Engine::Large)
             .with_admission_picker(Arc::new(RateLimitPicker::new(
                 config.disk_admission_rate_limit,
@@ -137,14 +149,14 @@ where
         Ok(Self { cache })
     }
 
-    pub async fn get(&self, key: &str) -> Option<V> {
+    pub async fn get(&self, key: &str) -> Option<CacheItem> {
         match self.cache.obtain(key.into()).await {
             Ok(Some(entry)) => match entry.value() {
                 MaybeDeserialized::DeserializedValue { value, .. } => Some(value.clone()),
                 MaybeDeserialized::RawBytes(bytes) => {
                     // If we fail to deserialize the raw bytes for some reason, pretend that we never
                     // had the key in the first place, and also remove it from the cache.
-                    match serialize::from_bytes_async::<V>(bytes).await {
+                    match serialize::from_bytes_async::<CacheItem>(bytes).await {
                         Ok(deserialized) => {
                             self.insert(key.into(), deserialized.clone(), bytes.len());
                             Some(deserialized)
@@ -166,7 +178,7 @@ where
         }
     }
 
-    pub fn insert(&self, key: Arc<str>, value: V, size_hint: usize) {
+    pub fn insert(&self, key: Arc<str>, value: CacheItem, size_hint: usize) {
         self.cache.insert(
             key,
             MaybeDeserialized::DeserializedValue { value, size_hint },

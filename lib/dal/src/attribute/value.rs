@@ -591,7 +591,7 @@ impl AttributeValue {
                 ctx.layer_db()
                     .cas()
                     .write(
-                        Arc::new(value.into()),
+                        Arc::new(value),
                         None,
                         ctx.events_tenancy(),
                         ctx.events_actor(),

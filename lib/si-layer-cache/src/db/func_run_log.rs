@@ -5,6 +5,7 @@ use si_events::{Actor, FuncRunId, FuncRunLog, Tenancy, WebEvent};
 use crate::{
     error::LayerDbResult,
     event::{LayeredEvent, LayeredEventKind},
+    hybrid_cache::CacheItemSpec,
     layer_cache::LayerCache,
     persister::PersisterClient,
 };
@@ -17,13 +18,16 @@ pub const PARTITION_KEY: &str = "workspace_id";
 
 #[derive(Debug, Clone)]
 pub struct FuncRunLogDb {
-    pub cache: Arc<LayerCache<Arc<FuncRunLog>>>,
+    pub cache: Arc<LayerCache>,
     persister_client: PersisterClient,
     get_for_func_run_id_query: String,
 }
 
+#[typetag::serde]
+impl CacheItemSpec for FuncRunLog {}
+
 impl FuncRunLogDb {
-    pub fn new(cache: Arc<LayerCache<Arc<FuncRunLog>>>, persister_client: PersisterClient) -> Self {
+    pub fn new(cache: Arc<LayerCache>, persister_client: PersisterClient) -> Self {
         Self {
             cache,
             persister_client,

@@ -1,3 +1,4 @@
+use si_layer_cache::hybrid_cache::CacheItemSpec;
 use std::collections::HashSet;
 
 use chrono::{DateTime, Utc};
@@ -16,6 +17,7 @@ use crate::{
     FuncBackendResponseType, FuncId, PropId, PropKind, SchemaId, SchemaVariant, SchemaVariantId,
     SocketArity, SocketKind, Timestamp, UserPk,
 };
+use typetag;
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -93,6 +95,7 @@ macro_rules! impl_into_content_types {
                     }
                 }
             }
+
         }
     };
 }
@@ -117,6 +120,21 @@ impl_into_content_types!(Validation);
 impl_into_content_types!(ManagementPrototype);
 impl_into_content_types!(Geometry);
 impl_into_content_types!(View);
+
+#[typetag::serde]
+impl CacheItemSpec for DeprecatedActionPrototypeContent {}
+#[typetag::serde]
+impl CacheItemSpec for AttributePrototypeContent {}
+#[typetag::serde]
+impl CacheItemSpec for DeprecatedActionContent {}
+#[typetag::serde]
+impl CacheItemSpec for DeprecatedActionBatchContent {}
+#[typetag::serde]
+impl CacheItemSpec for DeprecatedActionRunnerContent {}
+#[typetag::serde]
+impl CacheItemSpec for FuncContent {}
+#[typetag::serde]
+impl CacheItemSpec for FuncArgumentContent {}
 
 // Here we've broken the Foo, FooContent convention so we need to implement
 // these traits manually

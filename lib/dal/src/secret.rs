@@ -819,7 +819,7 @@ impl EncryptedSecret {
         ctx: &DalContext,
         key: EncryptedSecretKey,
     ) -> SecretResult<Option<Self>> {
-        Ok(ctx.layer_db().encrypted_secret().try_read_as(&key).await?)
+        Ok(ctx.layer_db().encrypted_secret().read(&key).await?)
     }
 
     /// Decrypts the encrypted secret with its associated [`KeyPair`] and returns a

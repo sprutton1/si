@@ -3,7 +3,6 @@ use std::str::FromStr;
 use std::sync::Arc;
 use std::{collections::HashMap, fmt::Display};
 
-use serde::{de::DeserializeOwned, Serialize};
 use si_data_pg::PgPool;
 use si_runtime::DedicatedExecutor;
 use telemetry::prelude::*;
@@ -12,26 +11,20 @@ use tokio_util::task::TaskTracker;
 
 use crate::db::serialize;
 use crate::error::LayerDbResult;
-use crate::hybrid_cache::{Cache, CacheConfig};
+use crate::hybrid_cache::{Cache, CacheConfig, CacheItem};
 use crate::pg::PgLayer;
 use crate::LayerDbError;
 
 #[derive(Debug, Clone)]
-pub struct LayerCache<V>
-where
-    V: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-{
-    cache: Cache<V>,
+pub struct LayerCache {
+    cache: Cache,
     name: String,
     pg: PgLayer,
     #[allow(dead_code)]
     compute_executor: DedicatedExecutor,
 }
 
-impl<V> LayerCache<V>
-where
-    V: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-{
+impl LayerCache {
     pub async fn new(
         name: &str,
         pg_pool: PgPool,
@@ -44,7 +37,7 @@ where
 
         let pg = PgLayer::new(pg_pool.clone(), name);
 
-        let lc: Arc<LayerCache<V>> = LayerCache {
+        let lc: Arc<LayerCache> = LayerCache {
             cache,
             name: name.to_string(),
             pg,
@@ -64,13 +57,13 @@ where
         Ok(())
     }
 
-    pub async fn get(&self, key: Arc<str>) -> LayerDbResult<Option<V>> {
+    pub async fn get(&self, key: Arc<str>) -> LayerDbResult<Option<CacheItem>> {
         Ok(match self.cache.get(&key).await {
             Some(memory_value) => Some(memory_value),
 
             None => match self.pg.get(&key).await? {
                 Some(bytes) => {
-                    let deserialized: V = serialize::from_bytes(&bytes)?;
+                    let deserialized: CacheItem = serialize::from_bytes(&bytes)?;
 
                     self.cache
                         .insert(key.clone(), deserialized.clone(), bytes.len());
@@ -97,7 +90,7 @@ where
         self.pg.get(&key).await
     }
 
-    pub async fn get_bulk<K>(&self, keys: &[K]) -> LayerDbResult<HashMap<K, V>>
+    pub async fn get_bulk<K>(&self, keys: &[K]) -> LayerDbResult<HashMap<K, CacheItem>>
     where
         K: Clone + Display + Eq + Hash + FromStr,
         <K as FromStr>::Err: Display,
@@ -121,7 +114,7 @@ where
         if !not_found.is_empty() {
             if let Some(pg_found) = self.pg.get_many(&not_found).await? {
                 for (k, bytes) in pg_found {
-                    let deserialized: V = serialize::from_bytes(&bytes)?;
+                    let deserialized: CacheItem = serialize::from_bytes(&bytes)?;
                     self.cache
                         .insert(k.clone().into(), deserialized.clone(), bytes.len());
                     found_keys.insert(
@@ -137,13 +130,13 @@ where
         Ok(found_keys)
     }
 
-    pub async fn deserialize_memory_value(&self, bytes: Arc<Vec<u8>>) -> LayerDbResult<V> {
+    pub async fn deserialize_memory_value(&self, bytes: Arc<Vec<u8>>) -> LayerDbResult<CacheItem> {
         serialize::from_bytes_async(&bytes)
             .await
             .map_err(Into::into)
     }
 
-    pub fn cache(&self) -> Cache<V> {
+    pub fn cache(&self) -> Cache {
         self.cache.clone()
     }
 
@@ -159,7 +152,7 @@ where
         self.cache.contains(key)
     }
 
-    pub fn insert(&self, key: Arc<str>, value: V, size_hint: usize) {
+    pub fn insert(&self, key: Arc<str>, value: CacheItem, size_hint: usize) {
         if !self.cache.contains(&key) {
             self.cache.insert(key, value, size_hint);
         }
@@ -170,7 +163,7 @@ where
             .insert_raw_bytes(key.clone(), serialize_value.clone());
     }
 
-    pub fn insert_or_update(&self, key: Arc<str>, value: V, size_hint: usize) {
+    pub fn insert_or_update(&self, key: Arc<str>, value: CacheItem, size_hint: usize) {
         self.cache.insert(key, value, size_hint);
     }
 

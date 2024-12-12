@@ -1,15 +1,16 @@
+use std::collections::HashMap;
+use std::fmt::Display;
 use std::sync::Arc;
-use std::{collections::HashMap, fmt::Display};
 
-use serde::{de::DeserializeOwned, Serialize};
-use si_events::{Actor, ContentHash, Tenancy, WebEvent};
+use si_events::{Actor, CasValue, ContentHash, Tenancy, WebEvent};
 
+use crate::hybrid_cache::{CacheItem, CacheItemSpec};
+use crate::LayerDbError;
 use crate::{
     error::LayerDbResult,
     event::{LayeredEvent, LayeredEventKind},
     layer_cache::LayerCache,
     persister::{PersisterClient, PersisterStatusReader},
-    LayerDbError,
 };
 
 use super::serialize;
@@ -19,19 +20,16 @@ pub const CACHE_NAME: &str = "cas";
 pub const PARTITION_KEY: &str = "cas";
 
 #[derive(Debug, Clone)]
-pub struct CasDb<V>
-where
-    V: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-{
-    pub cache: Arc<LayerCache<Arc<V>>>,
+pub struct CasDb {
+    pub cache: Arc<LayerCache>,
     persister_client: PersisterClient,
 }
 
-impl<V> CasDb<V>
-where
-    V: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-{
-    pub fn new(cache: Arc<LayerCache<Arc<V>>>, persister_client: PersisterClient) -> Self {
+#[typetag::serde]
+impl CacheItemSpec for CasValue {}
+
+impl CasDb {
+    pub fn new(cache: Arc<LayerCache>, persister_client: PersisterClient) -> Self {
         CasDb {
             cache,
             persister_client,
@@ -40,7 +38,7 @@ where
 
     pub fn write(
         &self,
-        value: Arc<V>,
+        value: CacheItem,
         web_events: Option<Vec<WebEvent>>,
         tenancy: Tenancy,
         actor: Actor,
@@ -67,8 +65,11 @@ where
         Ok((key, reader))
     }
 
-    pub async fn read(&self, key: &ContentHash) -> LayerDbResult<Option<Arc<V>>> {
-        self.cache.get(key.to_string().into()).await
+    pub async fn read(&self, key: &ContentHash) -> LayerDbResult<Option<Arc<CasValue>>> {
+        Ok(match self.cache.get(key.to_string().into()).await {
+            Ok(Some(value)) => Some(value.downcast_arc::<CasValue>().unwrap()),
+            _ => None,
+        })
     }
 
     /// We often need to extract the value from the arc by cloning it (although
@@ -76,8 +77,8 @@ where
     /// helpfully convert the value to the type we want to deal with
     pub async fn try_read_as<T>(&self, key: &ContentHash) -> LayerDbResult<Option<T>>
     where
-        V: TryInto<T>,
-        <V as TryInto<T>>::Error: Display,
+        CasValue: TryInto<T>,
+        <CasValue as TryInto<T>>::Error: Display,
     {
         Ok(match self.read(key).await? {
             None => None,
@@ -94,28 +95,21 @@ where
     pub async fn read_many(
         &self,
         keys: &[ContentHash],
-    ) -> LayerDbResult<HashMap<ContentHash, Arc<V>>> {
-        self.cache.get_bulk(keys).await
+    ) -> LayerDbResult<HashMap<ContentHash, Arc<CasValue>>> {
+        self.try_read_many_as::<CasValue>(keys).await
     }
 
     pub async fn try_read_many_as<T>(
         &self,
         keys: &[ContentHash],
-    ) -> LayerDbResult<HashMap<ContentHash, T>>
+    ) -> LayerDbResult<HashMap<ContentHash, Arc<T>>>
     where
-        V: TryInto<T>,
-        <V as TryInto<T>>::Error: Display,
+        T: 'static + CacheItemSpec + Clone,
     {
         let mut result = HashMap::new();
         for (key, arc_v) in self.cache.get_bulk(keys).await? {
-            result.insert(
-                key,
-                arc_v
-                    .as_ref()
-                    .clone()
-                    .try_into()
-                    .map_err(|err| LayerDbError::ContentConversion(err.to_string()))?,
-            );
+            let value = arc_v.downcast_arc::<T>().unwrap();
+            result.insert(key, value);
         }
 
         Ok(result)

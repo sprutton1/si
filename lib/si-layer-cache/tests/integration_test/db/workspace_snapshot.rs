@@ -9,7 +9,7 @@ use tokio_util::sync::CancellationToken;
 
 use crate::integration_test::{setup_compute_executor, setup_nats_client, setup_pg_db};
 
-type TestLayerDb = LayerDb<String, String, String, String>;
+type TestLayerDb = LayerDb;
 
 #[tokio::test]
 async fn write_to_db() {
@@ -46,7 +46,10 @@ async fn write_to_db() {
 
     // Are we in memory?
     let in_memory = ldb.workspace_snapshot().cache.cache().get(&key_str).await;
-    assert_eq!(Some(value.clone()), in_memory);
+    assert_eq!(
+        value.clone(),
+        in_memory.unwrap().downcast_arc::<String>().unwrap()
+    );
 
     // Are we in pg?
     let in_pg_postcard = ldb
@@ -110,7 +113,10 @@ async fn evict_from_db() {
 
     // Are we in memory?
     let in_memory = ldb.workspace_snapshot().cache.cache().get(&key_str).await;
-    assert_ne!(Some(value.clone()), in_memory);
+    assert_ne!(
+        value.clone(),
+        in_memory.unwrap().downcast_arc::<String>().unwrap()
+    );
 
     assert!(
         ldb.workspace_snapshot()
@@ -191,8 +197,8 @@ async fn evictions_are_gossiped() {
             .get(&pk_str)
             .await;
         match in_memory {
-            Some(value) => {
-                assert_eq!(value.clone(), value);
+            Some(found) => {
+                assert_eq!(found.downcast_arc::<String>(), Ok(value.clone()));
                 break;
             }
             None => {

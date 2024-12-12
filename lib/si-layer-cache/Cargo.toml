@@ -38,6 +38,8 @@ tokio = { workspace = true }
 tokio-stream = { workspace = true }
 tokio-util = { workspace = true }
 ulid = { workspace = true }
+typetag = "0.2.18"
+downcast-rs = "1.2.1"
 
 [dev-dependencies]
 buck2-resources = { path = "../../lib/buck2-resources" }

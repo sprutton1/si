@@ -3,10 +3,9 @@ use si_data_pg::PgPoolConfig;
 use si_runtime::DedicatedExecutor;
 use std::{future::IntoFuture, io, sync::Arc};
 
-use serde::{de::DeserializeOwned, Serialize};
+use serde::Serialize;
 use si_data_nats::{NatsClient, NatsConfig};
 use si_data_pg::PgPool;
-use si_events::{FuncRun, FuncRunLog};
 use telemetry::prelude::*;
 use tokio::sync::mpsc;
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
@@ -38,19 +37,8 @@ pub mod serialize;
 pub mod workspace_snapshot;
 
 #[derive(Debug, Clone)]
-pub struct LayerDb<CasValue, EncryptedSecretValue, WorkspaceSnapshotValue, RebaseBatchValue>
-where
-    CasValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-    EncryptedSecretValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-    WorkspaceSnapshotValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-    RebaseBatchValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-{
-    cas: CasDb<CasValue>,
-    encrypted_secret: EncryptedSecretDb<EncryptedSecretValue>,
-    func_run: FuncRunDb,
-    func_run_log: FuncRunLogDb,
-    rebase_batch: RebaseBatchDb<RebaseBatchValue>,
-    workspace_snapshot: WorkspaceSnapshotDb<WorkspaceSnapshotValue>,
+pub struct LayerDb {
+    cache: WorkspaceSnapshotDb,
     pg_pool: PgPool,
     nats_client: NatsClient,
     persister_client: PersisterClient,
@@ -58,14 +46,7 @@ where
     instance_id: Ulid,
 }
 
-impl<CasValue, EncryptedSecretValue, WorkspaceSnapshotValue, RebaseBatchValue>
-    LayerDb<CasValue, EncryptedSecretValue, WorkspaceSnapshotValue, RebaseBatchValue>
-where
-    CasValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-    EncryptedSecretValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-    WorkspaceSnapshotValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-    RebaseBatchValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-{
+impl LayerDb {
     #[instrument(name = "layer_db.init.from_config", level = "info", skip_all)]
     pub async fn from_config(
         config: LayerDbConfig,
@@ -100,82 +81,7 @@ where
         let (tx, rx) = mpsc::unbounded_channel();
         let persister_client = PersisterClient::new(tx);
 
-        let cas_cache: Arc<LayerCache<Arc<CasValue>>> = LayerCache::new(
-            cas::CACHE_NAME,
-            pg_pool.clone(),
-            cache_config
-                .clone()
-                .with_name(cas::CACHE_NAME)
-                .memory_usable_max_percent(30)
-                .disk_usable_max_percent(30)
-                .with_path_join(cas::CACHE_NAME),
-            compute_executor.clone(),
-            tracker.clone(),
-            token.clone(),
-        )
-        .await?;
-
-        let encrypted_secret_cache: Arc<LayerCache<Arc<EncryptedSecretValue>>> = LayerCache::new(
-            encrypted_secret::CACHE_NAME,
-            pg_pool.clone(),
-            cache_config
-                .clone()
-                .with_name(encrypted_secret::CACHE_NAME)
-                .memory_usable_max_percent(5)
-                .disk_usable_max_percent(5)
-                .with_path_join(encrypted_secret::CACHE_NAME),
-            compute_executor.clone(),
-            tracker.clone(),
-            token.clone(),
-        )
-        .await?;
-
-        let func_run_cache: Arc<LayerCache<Arc<FuncRun>>> = LayerCache::new(
-            func_run::CACHE_NAME,
-            pg_pool.clone(),
-            cache_config
-                .clone()
-                .with_name(func_run::CACHE_NAME)
-                .memory_usable_max_percent(5)
-                .disk_usable_max_percent(5)
-                .with_path_join(func_run::CACHE_NAME),
-            compute_executor.clone(),
-            tracker.clone(),
-            token.clone(),
-        )
-        .await?;
-
-        let func_run_log_cache: Arc<LayerCache<Arc<FuncRunLog>>> = LayerCache::new(
-            func_run_log::CACHE_NAME,
-            pg_pool.clone(),
-            cache_config
-                .clone()
-                .with_name(func_run_log::CACHE_NAME)
-                .memory_usable_max_percent(5)
-                .disk_usable_max_percent(5)
-                .with_path_join(func_run_log::CACHE_NAME),
-            compute_executor.clone(),
-            tracker.clone(),
-            token.clone(),
-        )
-        .await?;
-
-        let rebase_batch_cache: Arc<LayerCache<Arc<RebaseBatchValue>>> = LayerCache::new(
-            rebase_batch::CACHE_NAME,
-            pg_pool.clone(),
-            cache_config
-                .clone()
-                .with_name(rebase_batch::CACHE_NAME)
-                .memory_usable_max_percent(5)
-                .disk_usable_max_percent(5)
-                .with_path_join(rebase_batch::CACHE_NAME),
-            compute_executor.clone(),
-            tracker.clone(),
-            token.clone(),
-        )
-        .await?;
-
-        let snapshot_cache: Arc<LayerCache<Arc<WorkspaceSnapshotValue>>> = LayerCache::new(
+        let cache: Arc<LayerCache> = LayerCache::new(
             workspace_snapshot::CACHE_NAME,
             pg_pool.clone(),
             cache_config
@@ -254,11 +160,11 @@ where
         &self.persister_client
     }
 
-    pub fn cas(&self) -> &CasDb<CasValue> {
+    pub fn cas(&self) -> &CasDb {
         &self.cas
     }
 
-    pub fn encrypted_secret(&self) -> &EncryptedSecretDb<EncryptedSecretValue> {
+    pub fn encrypted_secret(&self) -> &EncryptedSecretDb {
         &self.encrypted_secret
     }
 
@@ -270,11 +176,11 @@ where
         &self.func_run_log
     }
 
-    pub fn rebase_batch(&self) -> &RebaseBatchDb<RebaseBatchValue> {
+    pub fn rebase_batch(&self) -> &RebaseBatchDb {
         &self.rebase_batch
     }
 
-    pub fn workspace_snapshot(&self) -> &WorkspaceSnapshotDb<WorkspaceSnapshotValue> {
+    pub fn workspace_snapshot(&self) -> &WorkspaceSnapshotDb {
         &self.workspace_snapshot
     }
 

@@ -14,7 +14,7 @@ use tokio_util::sync::CancellationToken;
 
 use crate::integration_test::{setup_compute_executor, setup_nats_client, setup_pg_db};
 
-type TestLayerDb = LayerDb<String, String, String, String>;
+type TestLayerDb = LayerDb;
 
 #[tokio::test]
 async fn write_to_db() {
@@ -47,7 +47,14 @@ async fn write_to_db() {
 
     // Are we in memory?
     let in_memory = ldb.func_run().cache.cache().get(&key_str).await;
-    assert_eq!(value.id(), in_memory.expect("func run not in memory").id());
+    assert_eq!(
+        value.id(),
+        in_memory
+            .expect("func run not in memory")
+            .downcast_arc::<FuncRun>()
+            .unwrap()
+            .id()
+    );
 
     // Are we in pg?
     let in_pg_postcard = ldb
@@ -105,7 +112,14 @@ async fn update() {
 
     // Are we in memory?
     let in_memory = ldb.func_run().cache.cache().get(&key_str).await;
-    assert_eq!(value.id(), in_memory.expect("func run not in memory").id());
+    assert_eq!(
+        value.id(),
+        in_memory
+            .expect("func run not in memory")
+            .downcast_arc::<FuncRun>()
+            .unwrap()
+            .id()
+    );
 
     // Are we in pg?
     let in_pg_postcard = ldb
@@ -135,7 +149,11 @@ async fn update() {
     let in_memory = ldb.func_run().cache.cache().get(&key_str).await;
     assert_eq!(
         update_func_run.state(),
-        in_memory.expect("func run not in memory").state(),
+        in_memory
+            .expect("func run not in memory")
+            .downcast_arc::<FuncRun>()
+            .unwrap()
+            .state(),
         "updated in memory state"
     );
 
@@ -158,7 +176,10 @@ async fn update() {
         let in_memory = ldb_remote.func_run().cache.cache().get(&key_str).await;
         match in_memory {
             Some(value) => {
-                assert_eq!(update_func_run.state(), value.state());
+                assert_eq!(
+                    update_func_run.state(),
+                    value.downcast_arc::<FuncRun>().unwrap().state()
+                );
                 break;
             }
             None => {

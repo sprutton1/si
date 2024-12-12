@@ -7,7 +7,7 @@ use tokio_util::sync::CancellationToken;
 
 use crate::integration_test::{setup_compute_executor, setup_nats_client, setup_pg_db};
 
-type TestLayerDb = LayerDb<CasValue, String, String, String>;
+type TestLayerDb = LayerDb;
 
 #[tokio::test]
 async fn write_to_db() {
@@ -44,7 +44,10 @@ async fn write_to_db() {
 
     // Are we in memory?
     let in_memory = ldb.cas().cache.cache().get(&cas_pk_str).await;
-    assert_eq!(Some(cas_value.clone()), in_memory);
+    assert_eq!(
+        cas_value.clone(),
+        in_memory.unwrap().downcast_arc::<CasValue>().unwrap()
+    );
 
     // Are we in pg?
     let in_pg_postcard = ldb
@@ -146,7 +149,7 @@ async fn cold_read_from_db() {
     // Delete from cache
     ldb.cas().cache.cache().remove(&cas_pk_str);
     let not_in_cache = ldb.cas().cache.cache().get(&cas_pk_str).await;
-    assert_eq!(not_in_cache, None);
+    assert!(not_in_cache.is_none());
 
     // Read the data from the cache
     let data = ldb
@@ -160,7 +163,10 @@ async fn cold_read_from_db() {
 
     // Are we in cache after the read?
     let in_cache = ldb.cas().cache.cache().get(&cas_pk_str).await;
-    assert_eq!(Some(cas_value.clone()), in_cache);
+    assert_eq!(
+        cas_value.clone(),
+        in_cache.unwrap().downcast_arc::<CasValue>().unwrap()
+    );
 
     // Are we in pg?
     let in_pg_postcard = ldb
@@ -236,7 +242,7 @@ async fn writes_are_gossiped() {
         let in_memory = ldb_axl.cas().cache.cache().get(&cas_pk_str).await;
         match in_memory {
             Some(value) => {
-                assert_eq!(cas_value.clone(), value);
+                assert_eq!(cas_value.clone(), value.downcast_arc::<CasValue>().unwrap());
                 break;
             }
             None => {
@@ -338,7 +344,7 @@ async fn stress_test() {
                     Some(value) => {
                         let cas_value: Arc<CasValue> =
                             Arc::new(CasValue::String(big_string.to_string()));
-                        assert_eq!(cas_value, value);
+                        assert_eq!(cas_value, value.downcast_arc::<CasValue>().unwrap());
                         break;
                     }
                     None => {

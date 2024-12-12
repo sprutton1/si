@@ -324,7 +324,7 @@ impl ActionPrototype {
                 ctx.layer_db()
                     .cas()
                     .write(
-                        Arc::new(value.into()),
+                        Arc::new(value),
                         None,
                         ctx.events_tenancy(),
                         ctx.events_actor(),
@@ -339,7 +339,7 @@ impl ActionPrototype {
                 ctx.layer_db()
                     .cas()
                     .write(
-                        Arc::new(value.into()),
+                        Arc::new(value),
                         None,
                         ctx.events_tenancy(),
                         ctx.events_actor(),
