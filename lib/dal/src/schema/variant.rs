@@ -3,6 +3,7 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::Arc;
 
+use anyhow::Result;
 use chrono::Utc;
 use petgraph::{Direction, Outgoing};
 use serde::{Deserialize, Serialize};
@@ -179,7 +180,7 @@ pub enum SchemaVariantError {
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
 
-pub type SchemaVariantResult<T> = Result<T, SchemaVariantError>;
+pub type SchemaVariantResult<T> = Result<T>;
 
 pub use si_id::SchemaVariantId;
 
