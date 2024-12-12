@@ -7,6 +7,7 @@ use dal::{
     WsEvent,
 };
 use frontend_types::FuncSummary;
+use si_events::audit_log::AuditLogKind;
 use si_frontend_types as frontend_types;
 
 use crate::{
@@ -32,7 +33,7 @@ pub async fn create_func_argument(
     FuncAuthoringClient::create_func_argument(
         &ctx,
         func_id,
-        request.name,
+        request.name.clone(),
         request.kind.into(),
         request.element_kind.map(Into::into),
     )
@@ -42,6 +43,17 @@ pub async fn create_func_argument(
         .await?
         .into_frontend_type(&ctx)
         .await?;
+    ctx.write_audit_log(
+        AuditLogKind::CreateFuncArgument {
+            func_id: func_summary.func_id,
+            func_display_name: func_summary.display_name.clone(),
+            func_name: func_summary.name.clone(),
+            kind: request.kind.to_string(),
+            element_kind: request.element_kind.map(|a| a.to_string()),
+        },
+        request.name,
+    )
+    .await?;
     WsEvent::func_updated(&ctx, func_summary.clone(), None)
         .await?
         .publish_on_commit(&ctx)
