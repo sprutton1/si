@@ -15,6 +15,7 @@ use dal::{
         prototype::{ManagementPrototype, ManagementPrototypeError, ManagementPrototypeId},
         ManagementError, ManagementFuncReturn, ManagementOperator,
     },
+    schema::variant::authoring::VariantAuthoringError,
     ChangeSet, ChangeSetError, ChangeSetId, ComponentId, TransactionsError, WorkspacePk,
 };
 use serde::{Deserialize, Serialize};
@@ -30,6 +31,7 @@ use crate::{
 
 use super::func::FuncAPIError;
 
+mod generate_template;
 mod history;
 mod latest;
 
@@ -65,6 +67,8 @@ pub enum ManagementApiError {
     SerdeJson(#[from] serde_json::Error),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
+    #[error("variant authoring error: {0}")]
+    VariantAuthoring(#[from] VariantAuthoringError),
 }
 
 impl IntoResponse for ManagementApiError {
@@ -156,4 +160,8 @@ pub fn v2_routes() -> Router<AppState> {
             get(latest::latest),
         )
         .route("/history", get(history::history))
+        .route(
+            "/generate_template/:viewId",
+            post(generate_template::generate_template),
+        )
 }
