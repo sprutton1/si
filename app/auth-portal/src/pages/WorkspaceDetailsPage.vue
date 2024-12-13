@@ -37,6 +37,17 @@
           </div>
         </template>
         <IconButton
+          tooltip="Create API Token for Automation"
+          tooltipPlacement="top"
+          :icon="'clipboard-copy'"
+          size="lg"
+          class="flex-none"
+          iconTone="warning"
+          :iconIdleTone="draftWorkspace.isFavourite ? 'warning' : 'shade'"
+          iconBgActiveTone="action"
+          @click="createAutomationToken()"
+        />
+        <IconButton
           :tooltip="
             draftWorkspace.isFavourite ? 'Remove Favourite' : 'Add Favourite'
           "
@@ -426,6 +437,19 @@ const favouriteWorkspace = async (isFavourite: boolean) => {
   await workspacesStore.SET_FAVOURITE(props.workspaceId, isFavourite);
 
   draftWorkspace.isFavourite = isFavourite;
+};
+
+const createAutomationToken = async () => {
+  if (!props.workspaceId) return;
+
+  const { result } = await workspacesStore.CREATE_AUTOMATION_TOKEN(
+    props.workspaceId,
+  );
+  if (result.success) {
+    // eslint-disable-next-line no-alert
+    alert(`Token created! Copying to clipboard. Token: ${result.data.token}`);
+    await navigator.clipboard.writeText(result.data.token);
+  }
 };
 
 const deleteWorkspace = async () => {

@@ -110,16 +110,13 @@ export class ApiRequest<
     | {
         success: true;
         data: Response;
-        err?: undefined;
-        errBody?: undefined;
-        statusCode?: undefined;
       }
     | {
         success: false;
         err: Error;
         errBody?: any;
         statusCode?: number | undefined;
-        data?: undefined;
+        data?: Response extends undefined ? never : undefined;
       } {
     /* eslint-disable @typescript-eslint/no-non-null-assertion */
     if (this.rawSuccess === undefined)
