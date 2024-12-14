@@ -19,13 +19,13 @@ pub async fn restore_authentication(
 ) -> SessionResult<Json<RestoreAuthenticationResponse>> {
     let ctx = builder.build_head(access_builder).await?;
 
-    let workspace = Workspace::get_by_pk(&ctx, &claim.workspace_pk)
+    let workspace = Workspace::get_by_pk(&ctx, &claim.workspace_id)
         .await?
-        .ok_or(SessionError::InvalidWorkspace(claim.workspace_pk))?;
+        .ok_or(SessionError::InvalidWorkspace(claim.workspace_id))?;
 
-    let user = User::get_by_pk(&ctx, claim.user_pk)
+    let user = User::get_by_pk(&ctx, claim.user_id)
         .await?
-        .ok_or(SessionError::InvalidUser(claim.user_pk))?;
+        .ok_or(SessionError::InvalidUser(claim.user_id))?;
 
     let reply = RestoreAuthenticationResponse { user, workspace };
 

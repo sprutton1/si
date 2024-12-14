@@ -106,7 +106,8 @@ t.test('Auth routes', async () => {
       const sdfToken = createSdfAuthToken({
         version: 2,
         userId,
-        allow: [{ workspaceId: workspace.id, roles: ["web"] }],
+        workspaceId: workspace.id,
+        allow: [{ roles: ["web"] }],
       });
       await request.get('/whoami')
         .set('cookie', `si-auth=${sdfToken}`)

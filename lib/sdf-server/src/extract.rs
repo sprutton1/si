@@ -8,10 +8,11 @@ use axum::{
 };
 use dal::{
     context::{self, DalContextBuilder},
-    User, UserClaim,
+    User,
 };
 use derive_more::Deref;
 use hyper::StatusCode;
+use si_jwt_public_key::SiJwtClaims;
 
 use crate::app_state::AppState;
 
@@ -28,9 +29,13 @@ impl FromRequestParts<AppState> for AccessBuilder {
         let Authorization(claim) = Authorization::from_request_parts(parts, state).await?;
         let Tenancy(tenancy) = tenancy_from_claim(&claim).await?;
 
+        if !claim.authorized_for_web() {
+            return Err(unauthorized_error());
+        }
+
         Ok(Self(context::AccessBuilder::new(
             tenancy,
-            dal::HistoryActor::from(claim.user_pk),
+            dal::HistoryActor::from(claim.user_id),
         )))
     }
 }
@@ -51,7 +56,7 @@ impl FromRequestParts<AppState> for AdminAccessBuilder {
     ) -> Result<Self, Self::Rejection> {
         let Authorization(claim) = Authorization::from_request_parts(parts, state).await?;
         let Tenancy(tenancy) = tenancy_from_claim(&claim).await?;
-        let history_actor = dal::HistoryActor::from(claim.user_pk);
+        let history_actor = dal::HistoryActor::from(claim.user_id);
         let access_builder = context::AccessBuilder::new(tenancy, history_actor);
 
         let dal_context_builder = state
@@ -93,10 +98,12 @@ impl FromRequestParts<AppState> for AdminAccessBuilder {
             })?;
 
         if !is_system_init {
-            Err(unauthorized_error())
-        } else {
-            Ok(Self)
+            return Err(unauthorized_error());
         }
+        if !claim.authorized_for_web() {
+            return Err(unauthorized_error());
+        }
+        Ok(Self)
     }
 }
 
@@ -195,7 +202,7 @@ impl FromRequestParts<AppState> for Nats {
     }
 }
 
-pub struct Authorization(pub UserClaim);
+pub struct Authorization(pub SiJwtClaims);
 
 #[async_trait]
 impl FromRequestParts<AppState> for Authorization {
@@ -205,8 +212,8 @@ impl FromRequestParts<AppState> for Authorization {
         parts: &mut Parts,
         state: &AppState,
     ) -> Result<Self, Self::Rejection> {
-        if let Some(claim) = parts.extensions.get::<UserClaim>() {
-            return Ok(Self(*claim));
+        if let Some(claim) = parts.extensions.get::<SiJwtClaims>() {
+            return Ok(Self(claim.clone()));
         }
 
         let HandlerContext(builder) = HandlerContext::from_request_parts(parts, state).await?;
@@ -220,12 +227,12 @@ impl FromRequestParts<AppState> for Authorization {
         let authorization = authorization_header_value
             .to_str()
             .map_err(internal_error)?;
-        let claim = UserClaim::from_bearer_token(jwt_public_signing_key, authorization)
+        let claim = SiJwtClaims::from_bearer_token(jwt_public_signing_key, authorization)
             .await
             .map_err(|_| unauthorized_error())?;
-        ctx.update_tenancy(dal::Tenancy::new(claim.workspace_pk));
+        ctx.update_tenancy(dal::Tenancy::new(claim.workspace_id));
 
-        let is_authorized = User::authorize(&ctx, &claim.user_pk, &claim.workspace_pk)
+        let is_authorized = User::authorize_for_web(&ctx, &claim)
             .await
             .map_err(|_| unauthorized_error())?;
 
@@ -233,13 +240,13 @@ impl FromRequestParts<AppState> for Authorization {
             return Err(unauthorized_error());
         }
 
-        parts.extensions.insert(claim);
+        parts.extensions.insert(claim.clone());
 
         Ok(Self(claim))
     }
 }
 
-pub struct WsAuthorization(pub UserClaim);
+pub struct WsAuthorization(pub SiJwtClaims);
 
 #[async_trait]
 impl FromRequestParts<AppState> for WsAuthorization {
@@ -258,12 +265,12 @@ impl FromRequestParts<AppState> for WsAuthorization {
             .map_err(|_| unauthorized_error())?;
         let authorization = query.get("token").ok_or_else(unauthorized_error)?;
 
-        let claim = UserClaim::from_bearer_token(jwt_public_signing_key, authorization)
+        let claim = SiJwtClaims::from_bearer_token(jwt_public_signing_key, authorization)
             .await
             .map_err(|_| unauthorized_error())?;
-        ctx.update_tenancy(dal::Tenancy::new(claim.workspace_pk));
+        ctx.update_tenancy(dal::Tenancy::new(claim.workspace_id));
 
-        let is_authorized = User::authorize(&ctx, &claim.user_pk, &claim.workspace_pk)
+        let is_authorized = User::authorize_for_web(&ctx, &claim)
             .await
             .map_err(|_| unauthorized_error())?;
 
@@ -291,9 +298,9 @@ impl FromRequestParts<AppState> for Tenancy {
 }
 
 async fn tenancy_from_claim(
-    claim: &UserClaim,
+    claim: &SiJwtClaims,
 ) -> Result<Tenancy, (StatusCode, Json<serde_json::Value>)> {
-    Ok(Tenancy(dal::Tenancy::new(claim.workspace_pk)))
+    Ok(Tenancy(dal::Tenancy::new(claim.workspace_id)))
 }
 
 fn internal_error(message: impl fmt::Display) -> (StatusCode, Json<serde_json::Value>) {

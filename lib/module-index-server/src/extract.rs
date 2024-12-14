@@ -106,7 +106,7 @@ impl FromRequestParts<AppState> for Authorization {
                 .custom;
 
         Ok(Self {
-            user_claim,
+            user_claim: user_claim.into(),
             auth_token: auth_token.into(),
         })
     }

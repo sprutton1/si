@@ -77,7 +77,8 @@ router.post("/auth/login", async (ctx) => {
   const token = createSdfAuthToken({
     version: 2,
     userId: user.id,
-    allow: [{ workspaceId, roles: ["web"] }],
+    workspaceId,
+    allow: [{ roles: ["web"] }],
   });
 
   ctx.body = { token };

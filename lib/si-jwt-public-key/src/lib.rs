@@ -5,6 +5,7 @@ use std::sync::Arc;
 
 use base64::{engine::general_purpose, Engine};
 use jwt_simple::{common::VerificationOptions, prelude::*};
+use monostate::MustBe;
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -78,9 +79,88 @@ impl JwtConfig {
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, Eq, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct SiJwtClaimPermission {
+    pub roles: Vec<SiJwtClaimRole>,
+}
+
+/** Role indicating what permissions the user should have */
+#[derive(Deserialize, Serialize, Debug, Copy, Clone, Eq, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum SiJwtClaimRole {
+    Web,
+    Automation,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, Eq, PartialEq)]
+#[serde(untagged, rename_all = "camelCase")]
+pub enum VersionedSiJwtClaims {
+    V2 {
+        version: MustBe!(2u8),
+        user_id: UserPk,
+        workspace_id: WorkspacePk,
+        allow: Vec<SiJwtClaimPermission>,
+    },
+    #[serde(rename_all = "snake_case")]
+    V1 {
+        user_pk: UserPk,
+        workspace_pk: WorkspacePk,
+    },
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct SiJwtClaims {
-    pub user_pk: UserPk,
-    pub workspace_pk: WorkspacePk,
+    pub user_id: UserPk,
+    pub workspace_id: WorkspacePk,
+    pub allow: Vec<SiJwtClaimPermission>,
+}
+
+impl SiJwtClaims {
+    pub fn for_web(user_id: UserPk, workspace_id: WorkspacePk) -> Self {
+        Self {
+            user_id,
+            workspace_id,
+            allow: vec![SiJwtClaimPermission {
+                roles: vec![SiJwtClaimRole::Web],
+            }],
+        }
+    }
+
+    pub fn authorized_for_web(&self) -> bool {
+        return self
+            .allow
+            .iter()
+            .any(|perm| perm.roles.contains(&SiJwtClaimRole::Web));
+    }
+
+    pub async fn from_bearer_token(
+        public_key: JwtPublicSigningKeyChain,
+        token: impl AsRef<str>,
+    ) -> JwtKeyResult<SiJwtClaims> {
+        let claims = validate_bearer_token(public_key, token).await?;
+        Ok(claims.custom.into())
+    }
+}
+
+impl From<VersionedSiJwtClaims> for SiJwtClaims {
+    fn from(claims: VersionedSiJwtClaims) -> Self {
+        match claims {
+            VersionedSiJwtClaims::V2 {
+                version: _,
+                user_id,
+                workspace_id,
+                allow,
+            } => SiJwtClaims {
+                user_id,
+                workspace_id,
+                allow,
+            },
+            VersionedSiJwtClaims::V1 {
+                user_pk,
+                workspace_pk,
+            } => SiJwtClaims::for_web(user_pk, workspace_pk),
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
@@ -96,7 +176,7 @@ pub trait JwtPublicKeyVerify: std::fmt::Debug + Send + Sync {
         &self,
         token: &str,
         options: Option<VerificationOptions>,
-    ) -> JwtKeyResult<JWTClaims<SiJwtClaims>>;
+    ) -> JwtKeyResult<JWTClaims<VersionedSiJwtClaims>>;
 }
 
 impl JwtPublicKeyVerify for RS256PublicKey {
@@ -108,7 +188,7 @@ impl JwtPublicKeyVerify for RS256PublicKey {
         &self,
         token: &str,
         options: Option<VerificationOptions>,
-    ) -> JwtKeyResult<JWTClaims<SiJwtClaims>> {
+    ) -> JwtKeyResult<JWTClaims<VersionedSiJwtClaims>> {
         self.verify_token(token, options)
             .map_err(|err| JwtPublicSigningKeyError::Verify(format!("{err}")))
     }
@@ -123,7 +203,7 @@ impl JwtPublicKeyVerify for ES256PublicKey {
         &self,
         token: &str,
         options: Option<VerificationOptions>,
-    ) -> JwtKeyResult<JWTClaims<SiJwtClaims>> {
+    ) -> JwtKeyResult<JWTClaims<VersionedSiJwtClaims>> {
         self.verify_token(token, options)
             .map_err(|err| JwtPublicSigningKeyError::Verify(format!("{err}")))
     }
@@ -155,7 +235,7 @@ impl JwtPublicSigningKeyChain {
         &self,
         token: &str,
         options: Option<VerificationOptions>,
-    ) -> JwtKeyResult<JWTClaims<SiJwtClaims>> {
+    ) -> JwtKeyResult<JWTClaims<VersionedSiJwtClaims>> {
         match self.primary.verify(token, options.clone()) {
             Ok(claims) => Ok(claims),
             Err(err) => match self.secondary.as_ref() {
@@ -176,7 +256,7 @@ impl JwtPublicSigningKeyChain {
 pub async fn validate_bearer_token(
     public_key: JwtPublicSigningKeyChain,
     bearer_token: impl AsRef<str>,
-) -> JwtKeyResult<JWTClaims<SiJwtClaims>> {
+) -> JwtKeyResult<JWTClaims<VersionedSiJwtClaims>> {
     let bearer_token = bearer_token.as_ref();
     let token = if let Some(token) = bearer_token.strip_prefix("Bearer ") {
         token.to_string()
@@ -194,6 +274,8 @@ pub async fn validate_bearer_token(
 mod tests {
     use super::*;
 
+    // TODO test these with V2 and V1
+
     #[tokio::test]
     async fn validate_with_primary_rs256() {
         println!("generating key...");
@@ -204,7 +286,7 @@ mod tests {
         let pub_key_pem = pub_key.to_pem().expect("get pub key pem");
         let pub_key_base64 = general_purpose::STANDARD.encode(pub_key_pem);
 
-        let si_claim = SiJwtClaims {
+        let si_claim = VersionedSiJwtClaims::V1 {
             user_pk: UserPk::generate(),
             workspace_pk: WorkspacePk::generate(),
         };
@@ -252,7 +334,7 @@ mod tests {
         let pub_key_pem = pub_key.to_pem().expect("get pub key pem");
         let pub_key_base64 = general_purpose::STANDARD.encode(pub_key_pem);
 
-        let si_claim = SiJwtClaims {
+        let si_claim = VersionedSiJwtClaims::V1 {
             user_pk: UserPk::generate(),
             workspace_pk: WorkspacePk::generate(),
         };
@@ -310,7 +392,7 @@ mod tests {
         let pub_key_pem = pub_key_rs256.to_pem().expect("get pub key pem");
         let pub_key_base64_rs256 = general_purpose::STANDARD.encode(pub_key_pem);
 
-        let si_claim = SiJwtClaims {
+        let si_claim = VersionedSiJwtClaims::V1 {
             user_pk: UserPk::generate(),
             workspace_pk: WorkspacePk::generate(),
         };

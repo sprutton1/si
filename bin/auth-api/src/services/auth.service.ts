@@ -51,13 +51,13 @@ export async function decodeAuthToken(token: string) {
 export type SdfAuthTokenPayload = SdfAuthTokenPayloadV1 | SdfAuthTokenPayloadV2;
 export type CurrentSdfAuthTokenPayload = SdfAuthTokenPayloadV2;
 export interface SdfAuthTokenPermission {
-  workspaceId: WorkspaceId | "*";
   roles: ["web" | "automation"];
 }
 
 interface SdfAuthTokenPayloadV2 {
   version: 2;
   userId: UserId;
+  workspaceId: WorkspaceId;
   allow: SdfAuthTokenPermission[];
 }
 

@@ -4239,6 +4239,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "monostate"
+version = "0.1.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0d208407d7552cd041d8cdb69a1bc3303e029c598738177a3d87082004dc0e1e"
+dependencies = [
+ "monostate-impl",
+ "serde",
+]
+
+[[package]]
+name = "monostate-impl"
+version = "0.1.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a7ce64b975ed4f123575d11afd9491f2e37bbd5813fbfbc0f09ae1fbddea74e0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.90",
+]
+
+[[package]]
 name = "multer"
 version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6623,6 +6644,7 @@ version = "0.1.0"
 dependencies = [
  "base64 0.22.1",
  "jwt-simple",
+ "monostate",
  "remain",
  "serde",
  "si-events",

@@ -410,7 +410,8 @@ router.post("/workspaces/:workspaceId/createAutomationToken", async (ctx) => {
   const token = createSdfAuthToken({
     version: 2,
     userId: authUser.id,
-    allow: [{ workspaceId: workspace.id, roles: ["automation"] }],
+    workspaceId: workspace.id,
+    allow: [{ roles: ["automation"] }],
   });
 
   ctx.body = { token };
@@ -436,7 +437,8 @@ router.post("/complete-auth-connect", async (ctx) => {
   const token = createSdfAuthToken({
     version: 2,
     userId: user.id,
-    allow: [{ workspaceId: workspace.id, roles: ["web"] }],
+    workspaceId: workspace.id,
+    allow: [{ roles: ["web"] }],
   });
 
   ctx.body = {
